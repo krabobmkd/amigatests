@@ -7,7 +7,7 @@ cmake_minimum_required (VERSION 3.1)
 enable_language( VASM )
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
-project(Aucadicty LANGUAGES C CXX VERSION 1.0)
+project(Tests LANGUAGES C CXX VERSION 1.0)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # this option system makes sure each cpu options are the same for each libs.
@@ -67,29 +67,21 @@ set(AMIGA_AUC_SRC
 
 # - - - -
 
-add_executable(Aucadicty ${AMIGA_AUC_SRC} )
-target_compile_definitions(Aucadicty PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
+#add_executable(Aucadicty ${AMIGA_AUC_SRC} )
+#target_compile_definitions(Aucadicty PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
 
-# the static libs that are part eof this repo:
-#re target_link_libraries(${PROGNAME} PUBLIC Aucadicty z )
+add_executable(layerexp layerexperiments.c  )
+#target_compile_definitions(layerexp PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
+target_link_options(layerexp PRIVATE -s ${AMIGA_COMPILER_OPTIONS})
+#set_property(TARGET layerexp PROPERTY C_STANDARD 11)
+#set_property(TARGET layerexp PROPERTY CXX_STANDARD 11)
+#target_link_libraries(layerexp "${M68KAMIGA_ROOT_PATH}/m68k-amigaos/vbcc/lib/reaction.lib" )
 
-# target_include_directories(${PROGNAME} PUBLIC "../mame037b/src")
-#target_include_directories(${PROGNAME} PUBLIC "../mame106" )
+#add_executable(reactiondemo reactiondemo.c reactionImages.c  )
+#target_compile_definitions(reactiondemo PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
+#target_link_options(reactiondemo PRIVATE -s ${AMIGA_COMPILER_OPTIONS})
+#target_link_libraries(reactiondemo "${M68KAMIGA_ROOT_PATH}/m68k-amigaos/vbcc/lib/reaction.lib" )
 
-# MUI is not provided by gccbebbo6.5 ndk by default, we have it there:
-#target_include_directories(${PROGNAME} PUBLIC "${COMMONLIBS}/extrasdk/MUI38/include")
-# target_include_directories(${PROGNAME} PUBLIC "${COMMONLIBS}/extrasdk/P96/include")
-
-# sources that doesn't support -O2 are moved to MameXAmigaO0 lib
-#target_compile_options(${PROGNAME} PRIVATE
-#		$<$<CONFIG:RELEASE>:-O2 -Wno-narrowing -DNDEBUG>
-#		 ${AMIGA_COMPILER_OPTIONS} )
-
-
-
-add_executable(reactiondemo reactiondemo.c reactionImages.c  )
-target_compile_definitions(reactiondemo PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
-target_link_options(reactiondemo PRIVATE -s ${AMIGA_COMPILER_OPTIONS})
-# /vbcc/lib/reaction.lib
-target_link_libraries(reactiondemo "${M68KAMIGA_ROOT_PATH}/m68k-amigaos/vbcc/lib/reaction.lib" )
-# install(TARGETS Mame106 DESTINATION "${CMAKE_SOURCE_DIR}/../Mame")
+add_executable(gelstest gelstest.c datatypebm.c )
+#target_compile_definitions(layerexp PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
+target_link_options(gelstest PRIVATE -s ${AMIGA_COMPILER_OPTIONS})
