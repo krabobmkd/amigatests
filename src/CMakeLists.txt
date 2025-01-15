@@ -85,3 +85,7 @@ target_link_options(layerexp PRIVATE -s ${AMIGA_COMPILER_OPTIONS})
 add_executable(gelstest gelstest.c datatypebm.c )
 #target_compile_definitions(layerexp PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
 target_link_options(gelstest PRIVATE -s ${AMIGA_COMPILER_OPTIONS})
+
+add_executable(testScalePixelArray testScalePixelArray.c datatypebmRGB.c )
+#target_compile_definitions(layerexp PUBLIC GIT_BRANCH="${GIT_BRANCH}" )
+target_link_options(testScalePixelArray PRIVATE -s ${AMIGA_COMPILER_OPTIONS})

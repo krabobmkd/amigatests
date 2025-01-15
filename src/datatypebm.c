@@ -1,21 +1,17 @@
 //#include <proto/exec.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>
-//#include <proto/layers.h>
 #include <proto/datatypes.h>
 
 #include <datatypes/datatypes.h>
 #include <datatypes/pictureclass.h>
 #include <datatypes/datatypesclass.h>
-//#include <graphics/layers.h>
-//#include <graphics/rastport.h>
-//#include <graphics/gels.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 
-int LoadDataTypeToBm(const char *pFileName,struct BitMap **presult,struct Screen *pDestScreen)
+int LoadDataTypeToBm(const char *pFileName,struct BitMap **presult/*,struct Screen *pDestScreen*/)
 {
     Object                  *obj ;
 
@@ -31,9 +27,9 @@ int LoadDataTypeToBm(const char *pFileName,struct BitMap **presult,struct Screen
                         DTA_SourceType,         DTST_FILE,
                         DTA_GroupID,            GID_PICTURE,
                         OBP_Precision,          PRECISION_IMAGE,
-                        PDTA_FreeSourceBitMap,  TRUE,
-                        PDTA_Screen,            pDestScreen,
-                        PDTA_Remap,             TRUE,
+                        PDTA_FreeSourceBitMap,  FALSE,
+//                        PDTA_Screen,            pDestScreen,
+//                        PDTA_Remap,             TRUE,
                        0
                  );
 

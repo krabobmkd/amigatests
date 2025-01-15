@@ -1,36 +1,30 @@
 #include <proto/exec.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>
-#include <proto/layers.h>
+#include <proto/cybergraphics.h>
 
-#include <graphics/layers.h>
-#include <graphics/rastport.h>
-#include <graphics/gels.h>
+#include <cybergraphx/cybergraphics.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "datatypebm.h"
-
+#include "datatypebmRGB.h"
 
 struct Window *w=NULL;
-struct BitMap *bm=NULL;
+RGBBitmap *bm_argb=NULL;
+ struct Library * CyberGfxBase = NULL;
 
 int init()
 {
 
-    int res = LoadDataTypeToBm("chunli.gif",&bm);
-    printf("loadbm: %d BM: %08x\n",res,(int)bm);
-
-    // init gels
-//    struct GelsInfo gelsi={};
-//    struct Bob  b;
-//    InitGels(NULL,NULL,&gelsi);
-
+    int res = LoadDataTypeToBmRGB("rgbimage.png",&bm_argb);
+    printf("loadbm: %d BM: %08x\n",res,(int)bm_argb);
+    if(res != 0) exit(1);
 
     if(!w)
     {
-    int wwidth = 128;
-    int wheight = 96;
+    int wwidth = 256;
+    int wheight = 220;
 
     struct Screen *pWbScreen;
     if (!(pWbScreen = LockPubScreen(NULL))
@@ -45,7 +39,6 @@ int init()
     xcen>>=1;
     if(ycen<0) ycen=0;
     ycen>>=1;
-//    printf("openWindow:_machineWidth:%d _machineHeight:%d xcen:%d ycen:%d \n",_machineWidth,_machineHeight,xcen,ycen);
 
     w = (struct Window *)OpenWindowTags(NULL,
         WA_Left,xcen,
@@ -54,23 +47,24 @@ int init()
      //   WA_Height, _machineHeight,
         WA_InnerWidth, wwidth,
         WA_InnerHeight, wheight,
-//        WA_MaxWidth,  wwidth,
-//        WA_MaxHeight, wheight,
-//        WA_MinWidth, _machineWidth,
-//        WA_MinHeight, _machineHeight,
+        WA_MaxWidth,  wwidth*2,
+        WA_MaxHeight, wheight*2,
+        WA_MinWidth, 64,
+        WA_MinHeight, 32,
         WA_RptQueue,0, // no rawkey repeat messages
         WA_IDCMP,/* IDCMP_GADGETUP | IDCMP_GADGETDOWN |*/
             IDCMP_MOUSEBUTTONS |  IDCMP_RAWKEY | IDCMP_CHANGEWINDOW | IDCMP_REFRESHWINDOW |
             IDCMP_NEWSIZE /*| IDCMP_INTUITICKS*/ | IDCMP_CLOSEWINDOW,
 
-        WA_Flags, /*WFLG_SIZEGADGET*/ /*| WFLG_SIZEBRIGHT | WFLG_SIZEBBOTTOM |
+        WA_Flags, WFLG_SIZEGADGET /*| WFLG_SIZEBRIGHT | WFLG_SIZEBBOTTOM*/ |
 
-            */ WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_ACTIVATE /*|
+            WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_ACTIVATE /*|
             WFLG_SUPER_BITMAP*/
              | WFLG_GIMMEZEROZERO
            // | WFLG_NOCAREREFRESH
            //  | WFLG_SMART_REFRESH
             | WFLG_SIMPLE_REFRESH
+
             // | ((_maxzoomfactor>1)?WFLG_SIZEGADGET:0)
             ,
         WA_Title,(ULONG)"TestWindow", /* take title from version string */
@@ -91,16 +85,24 @@ void exitclose()
         CloseWindow(w);
         w = NULL;
     }
-    if(bm)
+    if(bm_argb)
     {
-        FreeBitMap(bm);
-        bm=NULL;
+        closeBmRGB(bm_argb);
+        bm_argb=NULL;
     }
+    if(CyberGfxBase) CloseLibrary(CyberGfxBase);
 }
 
 int main(int argc, char **argv)
 {
     atexit(exitclose);
+
+    CyberGfxBase = OpenLibrary("cybergraphics.library",1);
+    if(!CyberGfxBase)  {
+        printf("CFX not found\n");
+        return 1;
+    }
+
     if(init()) return 1;
 
     // - - - -
@@ -118,7 +120,7 @@ int main(int argc, char **argv)
             UWORD imqual  = im->Qualifier;
 
             ReplyMsg((struct Message *) im); // the faster the better.
-
+ printf("imclass:%08x\n",imclass);
             switch(imclass)
             {
                 case IDCMP_RAWKEY:
@@ -142,7 +144,19 @@ int main(int argc, char **argv)
                 case IDCMP_CLOSEWINDOW:
                     iquit=1;
                 break;
+               // case IDCMP_NEWSIZE:
                 case IDCMP_REFRESHWINDOW:
+
+                printf("IDCMP_REFRESHWINDOW %d %d \n");
+                ScalePixelArray((APTR)bm_argb->_RGB,
+                        bm_argb->_width,bm_argb->_height,
+                        bm_argb->_width*4,
+                                    w->RPort,
+                                    0,0, // dest x, y
+                                    w->GZZWidth,
+                                    w->GZZHeight,
+                                    RECTFMT_ARGB
+                                    );
 
                     break;
                 default:
