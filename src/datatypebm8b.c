@@ -1,6 +1,4 @@
-//#pragma GCC optimize ("O0")
-
-#include "datatypebmRGB.h"
+#include "datatypebm8b.h"
 #include <proto/exec.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>
@@ -29,33 +27,15 @@ static const char *errortexts[]={
     "Couldn't find CGX api",
     "Dataype version <43"
 };
-// = = = = =  workaround if SDK is 3.1, this is for datatype v43.
-#ifndef PDTA_DestMode
-#define PDTA_DestMode		(DTA_Dummy + 251)
-#define PMODE_V43 (1)	/* Extended mode */
-#endif
-#ifndef PDTA_SubClassRendersAll
-#define PDTA_SubClassRendersAll	(DTA_Dummy + 261)
-#endif
 
-#ifndef PBPAFMT_RGB
-#define PBPAFMT_RGB	0	/* 3 bytes per pixel (red, green, blue) */
-#define PBPAFMT_RGBA	1	/* 4 bytes per pixel (red, green, blue, alpha channel) */
-#define PBPAFMT_ARGB	2	/* 4 bytes per pixel (alpha channel, red, green, blue) */
-#define PBPAFMT_LUT8	3	/* 1 byte per pixel (using a separate colour map) */
-#define PBPAFMT_GREY8	4	/* 1 byte per pixel (0==black, 255==white) */
-#endif
-#ifndef PDTM_Dummy
-#define PDTM_Dummy (DTM_Dummy + 0x60)
-#endif
-#ifndef PDTM_READPIXELARRAY
-#define PDTM_READPIXELARRAY (PDTM_Dummy + 1)
-#endif
-// = = = = = =
 
 extern struct Library * DataTypesBase;
 
-int LoadDataTypeToBmRGB(const char *pFileName,RGBBitmap **preturn, int do32Bits)
+/** LoadDataTypeToBm8b use Amiga OS datatypes to retreive a classic Amiga gfx.h Planar BitMap.
+ * \param  pFileName file name (png, gif, ilbm, ...)
+ * \param  presult receive an allocated struct to be freed with graphics FreeBitMap().
+  */
+int LoadDataTypeToBm8b(const char* pFileName, struct BitMap** presult)
 {
     Object                  *obj ;
     struct BitMapHeader     *bmhd=NULL;
@@ -75,7 +55,7 @@ int LoadDataTypeToBmRGB(const char *pFileName,RGBBitmap **preturn, int do32Bits)
     obj =   NewDTObject( pFileName,
                         DTA_SourceType,         DTST_FILE,
                         DTA_GroupID,            GID_PICTURE,
-                        PDTA_Remap,             FALSE,
+                        PDTA_Remap,             TRUE,
 
                         PDTA_DestMode,          PMODE_V43, // me want 24b, else remaped to 8.
                         PDTA_SubClassRendersAll, TRUE, // needed ?
@@ -107,37 +87,7 @@ int LoadDataTypeToBmRGB(const char *pFileName,RGBBitmap **preturn, int do32Bits)
         pRgbBm->_height = bmhd->bmh_Height;
         pRgbBm->_bytesPerRow = bytesPerPixels*bmhd->bmh_Width;
         pRgbBm->_pixelByteSize = bytesPerPixels;
-#if 0
-        // FREEEZE
-        printf("PDTM_READPIXELARRAY - DoDTMethod() version\n");
-        // will freeze the whole system here:
-        nbpix = DoDTMethod( obj, NULL,  NULL,
-            // varargs start here
-            (ULONG)PDTM_READPIXELARRAY,
-            // following values actually maps struct pdtBlitPixelArray.
-            (ULONG) pRgbBm->_ARGB,  // points pixels I have allocated
-            (ULONG)pixelMode,
-            (ULONG)bytesPerPixels*bmhd->bmh_Width,
-            (ULONG)0,(ULONG)0,
-            (ULONG)bmhd->bmh_Width,(ULONG)bmhd->bmh_Height,
-            (ULONG)TAG_END // not sure if needed, but better i guess.
-            );
-#elif 0
-        // FREEEZE
-    printf("PDTM_READPIXELARRAY - DoDTMethodA() version\n");
-    {   // DoDTMethodA version
-        struct pdtBlitPixelArray bpa;
-        bpa.MethodID = PDTM_READPIXELARRAY;
-        bpa.pbpa_PixelData = (APTR) pRgbBm->_ARGB;
-        bpa.pbpa_PixelFormat = pixelMode;
-        bpa.pbpa_PixelArrayMod = bytesPerPixels*bmhd->bmh_Width;
-        bpa.pbpa_Left = bpa.pbpa_Top = 0;
-        bpa.pbpa_Width = bmhd->bmh_Width;
-        bpa.pbpa_Height = bmhd->bmh_Height;
 
-        nbpix = DoDTMethodA( obj, NULL,  NULL, &bpa  );
-    }
-#else
   //  printf("PDTM_READPIXELARRAY - alib's DoMethod() version\n");
     // IT WORKS !!! :)
     nbpix = DoMethod( obj,
@@ -152,7 +102,7 @@ int LoadDataTypeToBmRGB(const char *pFileName,RGBBitmap **preturn, int do32Bits)
             (ULONG)TAG_END
       );
 
-#endif
+
         // 1 if printf("nb pixels read:%d\n",nbpix);
 
         *preturn = pRgbBm;
@@ -161,13 +111,4 @@ int LoadDataTypeToBmRGB(const char *pFileName,RGBBitmap **preturn, int do32Bits)
     DisposeDTObject( obj );
 
     return 0;
-}
-
-void closeBmRGB(RGBBitmap *pRGBbm)
-{
-    if(!pRGBbm) return;
-    if(pRGBbm->_ARGB) {
-        FreeVec(pRGBbm->_ARGB);
-    }
-    FreeVec(pRGBbm);
 }
