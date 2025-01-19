@@ -5,16 +5,17 @@ cmake_minimum_required (VERSION 3.1)
 enable_language( VASM )
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
-project(RtgDualpf LANGUAGES C CXX VERSION 1.0)
+project(TestControllersProject LANGUAGES C CXX VERSION 1.0)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-add_executable(TestControllers
+add_executable(InputsCheckup
 		reactioninlines.h
-		testcontrollers.c
+		inputscheckup.c
 		keyboardviewclass.c
 		controllersviewclass.c
 		)
 # target_include_directories(TestControllers PRIVATE . )
 
-target_compile_options(TestControllers PRIVATE -s -save-temps -m68000)
-target_link_options(TestControllers PRIVATE -s )
+target_compile_options(InputsCheckup PRIVATE -s -save-temps -m68000)
+target_link_options(InputsCheckup PRIVATE -s )
+install(TARGETS InputsCheckup DESTINATION "${CMAKE_SOURCE_DIR}/..")

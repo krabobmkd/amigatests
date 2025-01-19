@@ -5,13 +5,14 @@
 extern "C" {
 #endif
 
-#include <proto/intuition.h>
+//#include <proto/intuition.h>
+#include <proto/alib.h>
 #include <intuition/classes.h>
 
 //struct Window;
 
 static inline struct Window *reaction_OpenWindow(Object *owin) {
-    return  (struct Window *)DoMethod(win, WM_OPEN, NULL);
+    return  (struct Window *)DoMethod(owin, WM_OPEN, NULL);
 }
 
 

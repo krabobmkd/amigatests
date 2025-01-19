@@ -45,9 +45,13 @@ struct Library *BitMapBase=NULL;
 struct Library *ButtonBase=NULL;
 struct Library *CheckBoxBase=NULL;
 
+
+//struct TextAttr helvetica15bu = { (STRPTR)"helvetica.font", 15, FSF_UNDERLINED | FSF_BOLD, FPF_DISKFONT };
+//struct TextAttr garnet16 = { (STRPTR)"garnet.font", 16, 0, FPF_DISKFONT };
+
 struct App
 {
-    struct Screen *screen = NULL;
+    struct Screen *screen;
 
     Object *window_obj; // object logic
     struct Window *win; // current reopened instance, as intuition Window.
@@ -60,12 +64,14 @@ struct App
         Object *keyboardlayout;
         Object *llpadslayout;
         Object *bottombarlayout;
+
+        Object *testbt;
 };
 
 struct App *app=NULL;
 
 
-Object *reaction_createLayout(int horiz,Object *childa,*childb,*childc,*childd)
+Object *reaction_createLayout(int horiz,Object *childa,Object *childb,Object *childc,Object *childd)
 {
     return NewObject( LAYOUT_GetClass(), NULL,
                 LAYOUT_Orientation, horiz,
@@ -123,8 +129,15 @@ int main(int argc, char **argv)
         Object *llpadslayout;
         Object *bottombarlayout;
 */
-    app->keyboardlayout =
+    app->testbt = NewObject( NULL, "button.gadget",
+                              //      GA_TextAttr, &garnet16,
+                                    GA_Text, "B_ig Button",
+                                    GA_RelVerify, TRUE, // needed
+                                TAG_END);
+    if(!app->testbt) cleanexit("Can't button");
 
+    app->keyboardlayout = reaction_createLayout(LAYOUT_ORIENT_HORIZ, app->testbt,NULL,NULL,NULL);
+    if(!app->keyboardlayout) cleanexit("Can't layout");
 
     {
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);
@@ -135,7 +148,7 @@ int main(int argc, char **argv)
             LAYOUT_BottomSpacing, 4,
             LAYOUT_HorizAlignment, LALIGN_RIGHT,
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
-
+            LAYOUT_AddChild, app->keyboardlayout,
             TAG_END);
         if (!app->mainlayout) cleanexit("layout class error");
     } //end if screen
@@ -146,23 +159,23 @@ int main(int argc, char **argv)
     /* Create the window object. */
     app->window_obj = NewObject( WINDOW_GetClass(), NULL,
         WA_Left, 0,
-        WA_Top, screen->Font->ta_YSize + 3,
-        WA_CustomScreen, screen,
+        WA_Top, app->lockedscreen->Font->ta_YSize + 3,
+        WA_CustomScreen, app->lockedscreen,
         WA_IDCMP, IDCMP_CLOSEWINDOW,
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
-        WA_Title, "ReAction Demonstration",
+        WA_Title, "Inputs Checkup",
         WINDOW_ParentGroup, app->mainlayout,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, GetDiskObject("PROGDIR:ReAction"),
         WINDOW_IconTitle, "ReAction Demo",
-        WINDOW_AppPort, app_port,
+        WINDOW_AppPort, app->app_port,
     TAG_END);
-    if(!window_obj) cleanexit("can't create window");
+    if(!app->window_obj) cleanexit("can't create window");
 
 
     /*  Open the window. */
     app->win = reaction_OpenWindow(app->window_obj);
-    if !(app->win) cleanexit("can't open window");
+    if(!app->win) cleanexit("can't open window");
 
     {
         ULONG signal;
@@ -176,7 +189,7 @@ int main(int argc, char **argv)
         {
             ULONG result;
 
-            Wait(signal | (1L << app_port->mp_SigBit));
+            Wait(signal | (1L << app->app_port->mp_SigBit));
 
             /* CA_HandleInput() returns the gadget ID of a clicked
              * gadget, or one of several pre-defined values.  For
@@ -261,7 +274,7 @@ int main(int argc, char **argv)
 
                     case WMHI_UNICONIFY:
                         app->win = reaction_OpenWindow(app->window_obj);
-                        if !(app->win) cleanexit("can't open window");
+                        if (!app->win) cleanexit("can't open window");
 
                         break;
 
@@ -287,7 +300,7 @@ void exitclose(void)
          * window if it is already opened and it will dispose of
          * all objects attached to it.
          */
-        if(app->window_obj) DisposeObject(window_obj);
+        if(app->window_obj) DisposeObject(app->window_obj);
         else {
             if(app->mainlayout)  DisposeObject(app->mainlayout);
         }
