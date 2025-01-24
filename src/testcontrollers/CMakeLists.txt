@@ -14,6 +14,7 @@ add_executable(InputsCheckup
 #		keyboardviewclass.c
 #		controllersviewclass.c
 		class_keyboardview.h
+		class_keyboardview_private.h
 		class_keyboardview_lib.c
 		class_keyboardview_dispatch.c
 		class_keyboardview_attribs.c

@@ -1,19 +1,59 @@
 
 #include <proto/exec.h>
 #include <proto/intuition.h>
+#include <proto/dos.h>
 //#include <proto/utility.h>
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 
 #include "class_keyboardview.h"
 
+
+#ifdef KEYBOARDVIEW_STATICLINK
+#include <stdlib.h>
+#endif
+
 #include "asmmacros.h"
 
 Class   *KeyboardViewClassPtr=NULL;
-const char *KeyboardViewClassID="krb.keyboardview";
-const char *KeyboardViewSuperClassID="";
+const char *KeyboardViewClassID= KeyboardView_CLASS_ID;
+const char *KeyboardViewSuperClassID=KeyboardView_SUPERCLASS_ID;
 
-#define KEYBOARDVIEW_STATICLINK 1
+#ifndef KEYBOARDVIEW_STATICLINK
+struct ExecBase       *SysBase=NULL;
+struct GfxBase        *GfxBase=NULL;
+struct IntuitionBase  *IntuitionBase=NULL;
+struct Library        *UtilityBase=NULL;
+//struct LocaleBase     *LocaleBase;
+//struct Library  *BevelBase,
+//                *LabelBase,
+//                *CyberGfxBase,
+//                *DitherRectBase,
+//                *KeymapBase;
+#endif
+
+//struct LocaleBase *LocaleBase;
+
+//struct Libs MyLibs[]=
+//{
+//  (APTR *)&CyberGfxBase,  "cybergraphics.library",      39,     OLF_OPTIONAL,
+//  (APTR *)&GfxBase,       "graphics.library",           39,     0,
+//  (APTR *)&IntuitionBase, "intuition.library",          39,     0,
+//  (APTR *)&LocaleBase,    "locale.library",             39,     0,
+//  (APTR *)&UtilityBase,   "utility.library",            39,     0,
+//  (APTR *)&KeymapBase,    "keymap.library",            39,     0,
+
+
+//  (APTR *)&BevelBase,     "images/bevel.image",         44,     0,
+//  (APTR *)&LabelBase,     "images/label.image",         44,     0,
+
+//  (APTR *)&DitherRectBase,  "images/mlr_ordered.pattern",    1,     OLF_OPTIONAL,
+//  0
+//};
+
+
+
+
 // note: if other boopsi classes are dependenices, they need to be opened here.
 #ifdef KEYBOARDVIEW_STATICLINK
 
@@ -26,16 +66,20 @@ const char *KeyboardViewSuperClassID="";
 #else
     BOOL KeyboardView_OpenLibs(void)
     {
-//      ULONG *LongMem=0;
+//      ULONG *LongMem=0;     
+        SysBase = *(( struct ExecBase *)4.l);
+        IntuitionBase = OpenLibrary("intuition.library",39);
+        GfxBase = OpenLibrary("graphics.library",39);
+        UtilityBase = OpenLibrary("utility.library",39);
 
-      SysBase=(APTR)LongMem[1];
-
-//        return(ex_OpenLibs(0, "MPEditor", 0,0,0, MyLibs));
+        return TRUE;
     }
 
     void KeyboardView_CloseLibs(void)
     {
-//      ex_CloseLibs(MyLibs);
+        if(UtilityBase) CloseLibrary(UtilityBase);
+        if(GfxBase) CloseLibrary(GfxBase);
+        if(IntuitionBase) CloseLibrary(IntuitionBase);
     }
 
 
@@ -98,8 +142,19 @@ void F_SAVED KeyboardView_LibCleanup( REG(struct Library *LibBase,a6) )
 //====================================================================================
 
 #ifdef KEYBOARDVIEW_STATICLINK
-void KeyboardView_LibInit_static()
+void KeyboardView_static_class_close()
 {
+    if(KeyboardViewClassPtr)
+    {
+        KeyboardView_LibCleanup(NULL);
+    }
+}
+// just use this one once
+void KeyboardView_static_class_init()
+{
+    atexit(KeyboardView_static_class_close);
+    KeyboardView_LibInit(NULL);
 
 }
 #endif
+

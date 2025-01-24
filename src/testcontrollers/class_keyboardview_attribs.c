@@ -1,6 +1,7 @@
 
 #include <proto/exec.h>
 #include <proto/intuition.h>
+#include <proto/dos.h>
 #include <proto/alib.h>
 
 #include <intuition/classes.h>
@@ -8,6 +9,7 @@
 #include <intuition/gadgetclass.h>
 
 #include "class_keyboardview.h"
+#include "class_keyboardview_private.h"
 
 #include "asmmacros.h"
 
@@ -136,6 +138,7 @@ ULONG F_SAVED KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *
    )
   {
     data=tag->ti_Data;
+ Printf("SetAttr:%lx\n",tag->ti_Tag);
 
     switch(tag->ti_Tag)
     {
@@ -273,7 +276,7 @@ ULONG F_SAVED KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *
 
     if(redraw)
     {
-      i_Notify(C,Gad,(Msg)Set,0);
+      KeyboardView_Notify(C,Gad,(Msg)Set,0);
     }
   }
 

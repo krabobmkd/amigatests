@@ -1,6 +1,8 @@
 
 #include <proto/exec.h>
 #include <proto/intuition.h>
+#include <proto/graphics.h>
+#include <proto/dos.h>
 #include <proto/alib.h>
 
 #include <intuition/classes.h>
@@ -8,17 +10,35 @@
 #include <intuition/gadgetclass.h>
 
 #include "class_keyboardview.h"
+#include "class_keyboardview_private.h"
 
 #include "asmmacros.h"
 
 #include <utility/tagitem.h>
 
 
+
+/* The GM_DOMAIN method is used to obtain the sizing requirements of an
+ * object for a class before ever creating an object. */
+
+/* GM_DOMAIN */
+//struct gpDomain
+//{
+//    ULONG		 MethodID;
+//    struct GadgetInfo	*gpd_GInfo;
+//    struct RastPort	*gpd_RPort;	/* RastPort to layout for */
+//    LONG		 gpd_Which;
+//    struct IBox		 gpd_Domain;	/* Resulting domain */
+//    struct TagItem	*gpd_Attrs;	/* Additional attributes */
+//};
+
 ULONG F_SAVED KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
 {
-  struct GadData *gdata=0;
+  KeyboardView *gdata=0;
 
   if(Gad) gdata=INST_DATA(C, Gad);
+ Printf("KeyboardView_Domain data:%lx\n",(int)gdata);
+
 
   D->gpd_Domain.Left=0;
   D->gpd_Domain.Top=0;
@@ -70,8 +90,12 @@ ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout 
   BOOL swap=0;
 
 //  float cfloat,aspect;
+    Printf("KeyboardView_Layout: %lx\n",(int)Gad);
+//    Printf("left: %ld top: %ld width: %ld heigt: %ld\n",
+//    (int)Gad->LeftEdge,(int)Gad->TopEdge,(int)Gad->Width,(int)Gad->Height);
 
-  gdata=INST_DATA(C, Gad);
+//re  gdata=INST_DATA(C, Gad);
+
 
 //  DKP("GM_LAYOUT\n");
 // GadgetInfo
@@ -149,17 +173,20 @@ ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout 
   {
     gdata->Rows=gdata->Cols=0;
   }
-
   if(layout->gpl_Initial)
   {
-    i_Notify(C,Gad,layout,0);
+    KeyboardView_Notify(C,Gad,layout,0);
   }
 */
+//  if(layout->gpl_Initial)
+//  {
+//    KeyboardView_Notify(C,Gad,layout,0);
+//  }
   return(1);
 }
 
 
-
+/* draw yourself, in the appropriate state */
 ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update)
 {
   KeyboardView *gdata;
@@ -181,6 +208,20 @@ ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender 
 
   if(rp)
   {
+
+      int left   =Gad->LeftEdge;
+      int top    =Gad->TopEdge;
+      int width  =Gad->Width;
+      int height =Gad->Height;
+
+      SetDrMd(rp,JAM1);
+      SetAPen(rp,1);
+      RectFill(rp,left,
+                  top,
+                  left + width  -1,
+                  top  + height -1)
+                  ;
+ //   RectFill( struct RastPort *rp, LONG xMin, LONG yMin, LONG xMax, LONG yMax );
 //    if(update == GREDRAW_UPDATE)
 //    {
 //      if(gdata->ActivePen != gdata->LastActivePen)

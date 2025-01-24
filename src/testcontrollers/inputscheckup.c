@@ -28,6 +28,9 @@
 #include <proto/button.h>
 #include <gadgets/button.h>
 
+#include "class_keyboardview.h"
+
+
 // because macros are a nightmare
 #include "reactioninlines.h"
 
@@ -66,6 +69,7 @@ struct App
         Object *bottombarlayout;
 
         Object *testbt;
+        Object *kbdview;
 };
 
 struct App *app=NULL;
@@ -117,6 +121,12 @@ int main(int argc, char **argv)
     if ( ! (ButtonBase = OpenLibrary("gadgets/button.gadget",44)))
         cleanexit("Can't open button.gadget");
 
+#ifdef KEYBOARDVIEW_STATICLINK
+    KeyboardView_static_class_init();
+#else
+#endif
+
+
 //    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
 //        cleanexit("Can't open checkbox.gadget");
 
@@ -136,7 +146,17 @@ int main(int argc, char **argv)
                                 TAG_END);
     if(!app->testbt) cleanexit("Can't button");
 
-    app->keyboardlayout = reaction_createLayout(LAYOUT_ORIENT_HORIZ, app->testbt,NULL,NULL,NULL);
+    app->kbdview = NewObject( NULL, KeyboardView_CLASS_ID,
+                              //      GA_TextAttr, &garnet16,
+                               //     GA_Text, "B_ig Button",
+                               //     GA_RelVerify, TRUE, // needed
+                                TAG_END);
+    if(!app->kbdview) cleanexit("Can't kbdview");
+
+
+    app->keyboardlayout = reaction_createLayout(LAYOUT_ORIENT_HORIZ,
+                    app->testbt,
+                    app->kbdview,NULL,NULL);
     if(!app->keyboardlayout) cleanexit("Can't layout");
 
     {
@@ -302,7 +322,12 @@ void exitclose(void)
          */
         if(app->window_obj) DisposeObject(app->window_obj);
         else {
+            // but if not attached because mid-init fail, has to be manual.
             if(app->mainlayout)  DisposeObject(app->mainlayout);
+            else {
+                if(app->testbt) DisposeObject(app->testbt);
+                if(app->kbdview) DisposeObject(app->kbdview);
+            }
         }
         if(app->lockedscreen) UnlockPubScreen(0, app->lockedscreen);
 

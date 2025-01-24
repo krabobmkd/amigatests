@@ -8,11 +8,64 @@
 #include <intuition/gadgetclass.h>
 
 #include "class_keyboardview.h"
+#include "class_keyboardview_private.h"
 
 #include "asmmacros.h"
 
 #include <utility/tagitem.h>
 
+ULONG F_SAVED KeyboardView_DoNotify(Class *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...);
+
+ULONG KeyboardView_Notify(Class *C, struct Gadget *Gad, Msg M, ULONG Flags)
+{
+  KeyboardView *gdata;
+
+  gdata=INST_DATA(C, Gad);
+
+  return(KeyboardView_DoNotify(C, Gad, M, Flags,
+                      GA_ID,                            Gad->GadgetID,
+//                      TCPALETTE_NumColors,              gdata->Pens,
+//                      TCPALETTE_SelectedColor,          gdata->ActivePen,
+//                      TCPALETTE_SelectedLRGB,           PACKRGB(gdata->Palette[gdata->ActivePen]),
+//                      TCPALETTE_SelectedRGB,            &gdata->Palette[gdata->ActivePen],
+//                      TCPALETTE_SelectedRed,            gdata->Palette[gdata->ActivePen].R>>(32-gdata->Precision),
+//                      TCPALETTE_SelectedGreen,          gdata->Palette[gdata->ActivePen].G>>(32-gdata->Precision),
+//                      TCPALETTE_SelectedBlue,           gdata->Palette[gdata->ActivePen].B>>(32-gdata->Precision),
+//                      TCPALETTE_EditMode,               gdata->EditMode,
+//                      TCPALETTE_NoUndo,                 (gdata->UndoLength?0:1),
+                      TAG_DONE));
+}
+/*
+ULONG KeyboardView_NotifyUndo(Class *C, struct Gadget *Gad, Msg M, ULONG Flags)
+{
+  KeyboardView *gdata;
+
+  gdata=INST_DATA(C, Gad);
+
+  return(i_DoNotify(C, Gad, M, Flags,
+                      GA_ID,                            Gad->GadgetID,
+                      TCPALETTE_NoUndo,                 (gdata->UndoLength?0:1),
+                      TAG_DONE));
+}
+*/
+
+
+ULONG F_SAVED KeyboardView_DoNotify(Class *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...)
+{
+  KeyboardView *gdata;
+
+  gdata=INST_DATA(C, Gad);
+
+// grep -ir opu_GInfo
+// ULONG SuperNotifyA(Class *CL, Object *O, struct opUpdate *M, struct TagItem *TagList)
+//   return(DoSuperMethod(CL,O,OM_NOTIFY, TagList, M->opu_GInfo, ((M->MethodID == OM_UPDATE)?(M->opu_Flags): 0)));
+
+// boopsi_GetGInfo(M) doesnt exist
+
+  ULONG res = DoSuperMethod(C,(APTR)Gad,OM_NOTIFY, &Tags ); // WTF?, /*boopsi_GetGInfo(M), Flags)
+
+  return(res);
+}
 
 
 
@@ -53,7 +106,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            i_Notify(C,Gad,(APTR)Input, 0);
+            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -66,7 +119,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            i_Notify(C,Gad,(APTR)Input, 0);
+            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -79,7 +132,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            i_Notify(C,Gad,(APTR)Input, 0);
+            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -93,7 +146,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            i_Notify(C,Gad,(APTR)Input, 0);
+            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -155,7 +208,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             if(gdata->ActivePen!=gdata->LastActivePen)
             {
               i_StoreUndoIfNeeded(C,Gad,Input);
-              i_Notify(C,Gad,(APTR)Input, OPUF_INTERIM);
+              KeyboardView_Notify(C,Gad,(APTR)Input, OPUF_INTERIM);
               gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
             }
           }
@@ -246,7 +299,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
                   gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
               }
 
-              i_Notify(C,Gad,(APTR)Input, 0);
+              KeyboardView_Notify(C,Gad,(APTR)Input, 0);
 
               retval = GMR_MEACTIVE;
 //              retval = GMR_NOREUSE;
@@ -264,7 +317,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
               {
                 gdata->EditMode=0;
                 gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-                i_Notify(C,Gad,(APTR)Input, 0);
+                KeyboardView_Notify(C,Gad,(APTR)Input, 0);
               }
 //              retval = GMR_NOREUSE | GMR_VERIFY;
               retval = GMR_REUSE;
@@ -273,7 +326,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             {
               gdata->MouseMode=1;
               gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-              i_Notify(C,Gad,(APTR)Input, 0);
+              KeyboardView_Notify(C,Gad,(APTR)Input, 0);
               retval = GMR_MEACTIVE;
             }
             break;
@@ -288,7 +341,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             {//                                                                                        (44.3.1) (09/01/00)
               gdata->EditMode=0;//                                                                     (44.3.1) (09/01/00)
               gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);//                                          (44.3.1) (09/01/00)
-              i_Notify(C,Gad,(APTR)Input, 0);//                                                        (44.3.1) (09/01/00)
+              KeyboardView_Notify(C,Gad,(APTR)Input, 0);//                                                        (44.3.1) (09/01/00)
             }//                                                                                        (44.3.1) (09/01/00)
             retval = GMR_REUSE;*/
                                           /* Since the gadget is going inactive, send a final   */
@@ -305,7 +358,7 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
 
   if(retval!=GMR_MEACTIVE)
   {
-    i_Notify(C,Gad,(APTR)Input, 0);
+    KeyboardView_Notify(C,Gad,(APTR)Input, 0);
   }
 
   return(retval);
