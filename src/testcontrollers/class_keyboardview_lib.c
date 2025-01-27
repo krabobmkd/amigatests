@@ -1,4 +1,9 @@
-
+/**
+ * This file contains lib inits that create the class
+ * and would OpenLibrary() for other dependencies.
+ * word XXX_STATICLINK decides if this is used as the header for a shared .class file
+ * or if it is statically linked.
+ */
 #include <proto/exec.h>
 #include <proto/intuition.h>
 #include <proto/dos.h>
@@ -6,8 +11,8 @@
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 
-#include "class_keyboardview.h"
-
+#include "class_keyboardview_private.h"
+#include "exec/resident.h"
 
 #ifdef KEYBOARDVIEW_STATICLINK
 #include <stdlib.h>
@@ -15,11 +20,163 @@
 
 #include "asmmacros.h"
 
-Class   *KeyboardViewClassPtr=NULL;
-const char *KeyboardViewClassID= KeyboardView_CLASS_ID;
-const char *KeyboardViewSuperClassID=KeyboardView_SUPERCLASS_ID;
 
 #ifndef KEYBOARDVIEW_STATICLINK
+#ifdef __GNUC__
+//
+// the way to lib header on gcc6.5
+// when linking .class , this will be the header
+int __attribute__((no_reorder)) _start()
+{
+        return -1;
+}
+extern void EndCode(void);
+extern const char libName[];
+extern const char libIdString[];
+extern const uint32_t InitTable[];
+/*
+               ;STRUCTURE RT,0
+     DC.W    RTC_MATCHWORD      ; UWORD RT_MATCHWORD
+     DC.L    RomTag             ; APTR  RT_MATCHTAG
+     DC.L    EndCode            ; APTR  RT_ENDSKIP
+     DC.B    RTF_AUTOINIT       ; UBYTE RT_FLAGS
+     DC.B    VERSION            ; UBYTE RT_VERSION  (defined in sample_rev.i)
+     DC.B    NT_LIBRARY         ; UBYTE RT_TYPE
+     DC.B    MYPRI              ; BYTE  RT_PRI
+     DC.L    LibName            ; APTR  RT_NAME
+     DC.L    IDString           ; APTR  RT_IDSTRING
+     DC.L    InitTable          ; APTR  RT_INIT  table for InitResident()
+*/
+#define VERSION_KEYBOARDVIEW 1
+
+const struct Resident RomTag __attribute__((used)) = {
+    RTC_MATCHWORD, // w
+    (struct Resident *)&RomTag, // l
+    (APTR)&EndCode,        // hard to link, must be in same section.
+    RTF_AUTOINIT,          // UBYTE RT_FLAGS
+    VERSION_KEYBOARDVIEW,  // UBYTE
+    1,                     // UBYTE  version
+    0,                     // UBYTE  PRIORITY
+    (char *)((intptr_t)&libName), // l
+    (char *)((intptr_t)&libIdString), // l
+    (APTR)InitTable, // l
+};
+
+const char libName[] = KeyboardView_CLASS_LIBID;
+const char libIdString[] = "1.0";
+
+
+//static struct VC4Base * OpenLib(REGARG(ULONG version, "d0"), REGARG(struct VC4Base *VC4Base, "a6"))
+//{
+//    struct ExecBase *SysBase = *(struct ExecBase **)4;
+//    VC4Base->vc4_LibNode.LibBase.lib_OpenCnt++;
+//    VC4Base->vc4_LibNode.LibBase.lib_Flags &= ~LIBF_DELEXP;
+
+//   // bug("[VC] OpenLib\n");
+
+//    return VC4Base;
+//}
+
+//static ULONG ExpungeLib(REGARG(struct VC4Base *VC4Base, "a6"))
+//{
+//    struct ExecBase *SysBase = VC4Base->vc4_SysBase;
+//    BPTR segList = 0;
+
+//    if (VC4Base->vc4_LibNode.LibBase.lib_OpenCnt == 0)
+//    {
+//        /* Free memory of mailbox request buffer */
+//        FreeMem(VC4Base->vc4_RequestBase, 4*256);
+
+//        /* Remove library from Exec's list */
+//        Remove(&VC4Base->vc4_LibNode.LibBase.lib_Node);
+
+//        /* Close all eventually opened libraries */
+//        if (VC4Base->vc4_ExpansionBase != NULL)
+//            CloseLibrary((struct Library *)VC4Base->vc4_ExpansionBase);
+//        if (VC4Base->vc4_DOSBase != NULL)
+//            CloseLibrary((struct Library *)VC4Base->vc4_DOSBase);
+//        if (VC4Base->vc4_IntuitionBase != NULL)
+//            CloseLibrary((struct Library *)VC4Base->vc4_IntuitionBase);
+
+//        /* Save seglist */
+//        segList = VC4Base->vc4_SegList;
+
+//        /* Remove VC4Base itself - free the memory */
+//        ULONG size = VC4Base->vc4_LibNode.LibBase.lib_NegSize + VC4Base->vc4_LibNode.LibBase.lib_PosSize;
+//        FreeMem((APTR)((ULONG)VC4Base - VC4Base->vc4_LibNode.LibBase.lib_NegSize), size);
+//    }
+//    else
+//    {
+//        /* Library is still in use, set delayed expunge flag */
+//        VC4Base->vc4_LibNode.LibBase.lib_Flags |= LIBF_DELEXP;
+//    }
+
+//    /* Return 0 or segList */
+//    return segList;
+//}
+
+//static ULONG CloseLib(REGARG(struct VC4Base *VC4Base, "a6"))
+//{
+//    if (VC4Base->vc4_LibNode.LibBase.lib_OpenCnt != 0)
+//        VC4Base->vc4_LibNode.LibBase.lib_OpenCnt--;
+
+//    if (VC4Base->vc4_LibNode.LibBase.lib_OpenCnt == 0)
+//    {
+//        if (VC4Base->vc4_LibNode.LibBase.lib_Flags & LIBF_DELEXP)
+//            return ExpungeLib(VC4Base);
+//    }
+
+//    return 0;
+//}
+
+
+static ULONG ExtFunc()
+{
+    return 0;
+}
+
+//struct VC4Base * vc4_Init(REGARG(struct VC4Base *base, "d0"), REGARG(BPTR seglist, "a0"), REGARG(struct ExecBase *SysBase, "a6"))
+//{
+//    struct VC4Base *VC4Base = base;
+//    VC4Base->vc4_SegList = seglist;
+//    VC4Base->vc4_SysBase = SysBase;
+//    VC4Base->vc4_LibNode.LibBase.lib_Revision = VC4CARD_REVISION;
+//    VC4Base->vc4_Enabled = -1;
+
+//    return VC4Base;
+//}
+
+int F_SAVED KeyboardView_LibInit(REG(struct Library *LibBase,a6));
+
+static ULONG vc4_functions[] = {
+    (ULONG)OpenLib,
+    (ULONG)CloseLib,
+    (ULONG)ExpungeLib,
+
+//    (ULONG)ExtFunc,
+//    (ULONG)FindCard,
+//    (ULONG)InitCard,
+    -1
+};
+
+const ULONG InitTable[4] = {
+    sizeof(struct VC4Base),
+    (uint32_t)vc4_functions,
+    0,
+    (uint32_t)vc4_Init
+};
+
+
+
+// endif gcc6.5 header
+#endif
+
+
+#endif
+
+
+#ifndef KEYBOARDVIEW_STATICLINK
+
 struct ExecBase       *SysBase=NULL;
 struct GfxBase        *GfxBase=NULL;
 struct IntuitionBase  *IntuitionBase=NULL;
@@ -52,6 +209,9 @@ struct Library        *UtilityBase=NULL;
 //};
 
 
+Class   *KeyboardViewClassPtr=NULL;
+const char *KeyboardViewClassID= KeyboardView_CLASS_ID;
+const char *KeyboardViewSuperClassID=KeyboardView_SUPERCLASS_ID;
 
 
 // note: if other boopsi classes are dependenices, they need to be opened here.
@@ -158,3 +318,11 @@ void KeyboardView_static_class_init()
 }
 #endif
 
+
+//   ; EndCode is a marker that show the end of your code.  Make sure it does not span
+//   ; sections nor is before the rom tag in memory!  It is ok to put it right after the ROM
+//   ; tag--that way you are always safe.  I put it here because it happens to be the "right"
+//   ; thing to do, and I know that it is safe in this case.
+#ifndef KEYBOARDVIEW_STATICLINK
+void EndCode(void) {}
+#endif

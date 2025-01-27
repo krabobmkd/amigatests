@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
 project(TestControllersProject LANGUAGES C CXX VERSION 1.0)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(VERSTRING "1.0")
 
 add_executable(InputsCheckup
 		reactioninlines.h
@@ -24,5 +25,25 @@ add_executable(InputsCheckup
 # target_include_directories(TestControllers PRIVATE . )
 
 target_compile_options(InputsCheckup PRIVATE -s -save-temps -m68000)
+target_compile_definitions(InputsCheckup PRIVATE KEYBOARDVIEW_STATICLINK=1 )
 target_link_options(InputsCheckup PRIVATE -s )
 install(TARGETS InputsCheckup DESTINATION "${CMAKE_SOURCE_DIR}/..")
+
+# binary class version
+add_executable(keyboardview.class
+		reactioninlines.h
+		class_keyboardview.h
+		class_keyboardview_private.h
+
+# XXX_lib must be first
+		classinit.s
+		classinit.c
+		class_keyboardview_lib.c
+		class_keyboardview_dispatch.c
+		class_keyboardview_attribs.c
+		class_keyboardview_render.c
+		class_keyboardview_handleinput.c
+		)
+target_link_options(keyboardview.class PRIVATE -ffreestanding -nostdlib -nostartfiles -Wl,-e,__start)
+target_compile_options(keyboardview.class PRIVATE -Os -m68000 -fomit-frame-pointer)
+target_compile_definitions(keyboardview.class PRIVATE PRIVATE VERSION_STRING="${VERSTRING}")
