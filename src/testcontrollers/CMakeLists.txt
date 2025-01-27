@@ -37,13 +37,14 @@ add_executable(keyboardview.class
 
 # XXX_lib must be first
 		classinit.s
-		classinit.c
 		class_keyboardview_lib.c
 		class_keyboardview_dispatch.c
 		class_keyboardview_attribs.c
 		class_keyboardview_render.c
 		class_keyboardview_handleinput.c
+		classend.s
 		)
-target_link_options(keyboardview.class PRIVATE -ffreestanding -nostdlib -nostartfiles -Wl,-e,__start)
-target_compile_options(keyboardview.class PRIVATE -Os -m68000 -fomit-frame-pointer)
+# VF added just -lamiga... could brings problems
+target_link_options(keyboardview.class PRIVATE -ffreestanding -nostdlib -lamiga -nostartfiles -Wl,-e,__start)
+target_compile_options(keyboardview.class PRIVATE -Os -m68000 -fomit-frame-pointer  -lamiga )
 target_compile_definitions(keyboardview.class PRIVATE PRIVATE VERSION_STRING="${VERSTRING}")

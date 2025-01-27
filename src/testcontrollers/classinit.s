@@ -2,7 +2,7 @@
 ;---------------------------------------------------------------------------
 
         NOLIST
-
+        INCLUDE "lvo/exec_lib.i"
         INCLUDE "exec/types.i"
         INCLUDE "exec/libraries.i"
         INCLUDE "exec/lists.i"
@@ -12,20 +12,51 @@
         INCLUDE "libraries/dos.i"
         INCLUDE "utility/hooks.i"
 
-        INCLUDE "led_rev.i"
-        INCLUDE "classbase.i"
+        ;INCLUDE "led_rev.i"
+        ;INCLUDE "classbase.i"
 
         LIST
 
+	INCLUDE "intuition/classes.i"
+	; what is actually allocated as a opened library
+	; ClassLib -> ClassLibrary -> Library
+   STRUCTURE ClassLib,0
+	STRUCT	cb_ClassLibrary,ClassLibrary_SIZEOF
+        UWORD	cb_Pad
+	ULONG	cb_SysBase
+	;ULONG   cb_UtilityBase
+	;ULONG	cb_IntuitionBase
+	;ULONG	cb_GfxBase
+	; actually needed for expunge
+	ULONG	cb_SegList
+
+   LABEL ClassLib_SIZEOF
+
+
+VERSION		EQU	42
+REVISION	EQU	2
+DATE	MACRO
+		dc.b	'7.3.94'
+	ENDM
+VERS	MACRO
+		dc.b	'led 42.2'
+	ENDM
+VSTRING	MACRO
+		dc.b	'led 42.2 (7.3.94)',13,10,0
+	ENDM
+VERSTAG	MACRO
+		dc.b	0,'$VER: led 42.2 (7.3.94)',0
+	ENDM
+; -----------------------------
+
+CALL	MACRO
+	jsr	_LVO\1(a6)
+	ENDM
+
 ;---------------------------------------------------------------------------
 
-	XREF	_CreateClass
-	XREF	_DestroyClass
-
-	XREF	_LVOSMult32
-	XREF    _LVOUMult32
-	XREF	_LVOSDivMod32
-	XREF	_LVOUDivMod32
+	XREF	_KeyboardView_CreateClass
+	XREF	_KeyboardView_DestroyClass
 
         XREF    ENDCODE
 
@@ -33,16 +64,19 @@
 
 	SECTION CODE
 
-        XDEF    LibInit
-        XDEF    LibOpen
-        XDEF    LibClose
-        XDEF    LibExpunge
-        XDEF	LibReserved
-        XDEF	@CallCHook
+		; needed by the gcc 6.5 trick as the bin entry point.
+		XDEF	__start
+
+;        XDEF    LibInit
+;        XDEF    LibOpen
+;        XDEF    LibClose
+;        XDEF    LibExpunge
+;        XDEF	LibReserved
 
 ;---------------------------------------------------------------------------
 
 ; First executable location, must return an error to the caller
+__start:
 Start:
         moveq   #-1,d0
         rts
@@ -61,7 +95,7 @@ ROMTAG:
         DC.L    LibId                   ; APTR  RT_IDSTRING
         DC.L    LibInitTable            ; APTR  RT_INIT
 
-LibName DC.B 'led.image',0
+LibName DC.B 'krb.keyboardview.class',0
 LibId   VSTRING
 
         CNOP    0,4
@@ -72,17 +106,13 @@ LibInitTable:
         DC.L    0
         DC.L    LibInit
 
-V_DEF	MACRO
-	DC.W	\1+(*-LibFuncTable)
-	ENDM
-
+; note: apparently an historic .w relative pmointers mode are supported (starting with -1?)
 LibFuncTable:
-	DC.W	-1
-        V_DEF	LibOpen
-        V_DEF	LibClose
-        V_DEF	LibExpunge
-        V_DEF	LibReserved
-        DC.W   -1
+	DC.L	LibOpen
+	DC.L	LibClose
+	DC.L	LibExpunge
+	DC.L	LibReserved
+	DC.L	-1
 
 ;-----------------------------------------------------------------------
 
@@ -97,20 +127,20 @@ LibInit:
 
         move.w	#REVISION,LIB_REVISION(a5)
 
-        move.l  #AO_GraphicsLib,d7
-        lea     GfxName(pc),a1
-        bsr.s	OpenLib
-        move.l  d0,cb_GfxBase(a5)
+;        move.l  #AO_GraphicsLib,d7
+;        lea     GfxName(pc),a1
+;        bsr.s	OpenLib
+;        move.l  d0,cb_GfxBase(a5)
 
-        move.l  #AO_Intuition,d7
-        lea     IntuitionName(pc),a1
-        bsr.s	OpenLib
-        move.l  d0,cb_IntuitionBase(a5)
+;        move.l  #AO_Intuition,d7
+;        lea     IntuitionName(pc),a1
+;        bsr.s	OpenLib
+;        move.l  d0,cb_IntuitionBase(a5)
 
-        move.l  #AO_UtilityLib,d7
-        lea     UtilityName(pc),a1
-        bsr.s	OpenLib
-        move.l  d0,cb_UtilityBase(a5)
+;        move.l  #AO_UtilityLib,d7
+;        lea     UtilityName(pc),a1
+;        bsr.s	OpenLib
+;        move.l  d0,cb_UtilityBase(a5)
 
         move.l  a5,d0
         movem.l (sp)+,a0/a5/d7
@@ -133,9 +163,9 @@ FailInit:
         rts
 
 LIBVERSION    EQU  37
-GfxName       DC.B "graphics.library",0
-IntuitionName DC.B "intuition.library",0
-UtilityName   DC.B "utility.library",0
+;GfxName       DC.B "graphics.library",0
+;IntuitionName DC.B "intuition.library",0
+;UtilityName   DC.B "utility.library",0
 
         CNOP    0,2
 
@@ -148,8 +178,8 @@ LibOpen:
 	tst.w	LIB_OPENCNT(a6)
 	bne.s	1$
 
-	bsr	_CreateClass
-	tst.w	d0
+	bsr	_KeyboardView_CreateClass
+	tst.l	d0
 	bne.s	1$
 
 	moveq	#0,d0
@@ -171,7 +201,7 @@ LibClose:
 	subq.w	#1,LIB_OPENCNT(a6)
 	bne.s	1$			; if openers, don't remove class
 
-	bsr	_DestroyClass		; zero openers, so try to remove class
+	bsr	_KeyboardView_DestroyClass		; zero openers, so try to remove class
 
 1$:
 	; if delayed expunge bit set, then try to get rid of the library
@@ -247,25 +277,18 @@ LibReserved:
 ;-----------------------------------------------------------------------
 
 CloseLibs:
-        move.l  cb_GfxBase(a5),a1
-        CALL    CloseLibrary
+;        move.l  cb_GfxBase(a5),a1
+;        CALL    CloseLibrary
 
-        move.l  cb_IntuitionBase(a5),a1
-        CALL    CloseLibrary
+;        move.l  cb_IntuitionBase(a5),a1
+;        CALL    CloseLibrary
 
-        move.l  cb_UtilityBase(a5),a1
-        GO	CloseLibrary
-
+;        move.l  cb_UtilityBase(a5),a1
+;        CALL	CloseLibrary
+		rts
 ;-----------------------------------------------------------------------
 
 
-; Restores context and calls high-level language hook
-@CallCHook:
-	movem.l	a5/a6,-(sp)
-	movem.l	h_SubEntry(a0),a5/a6	; h_SubEntry into A5, h_Data into A6
-	jsr	(a5)			; call HLL
-	movem.l	(sp)+,a5/a6
-	rts
 
 ;-----------------------------------------------------------------------
 
