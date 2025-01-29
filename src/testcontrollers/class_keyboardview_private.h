@@ -49,8 +49,21 @@ typedef union MsgUnion
 
 ULONG KeyboardView_Notify(Class *C, struct Gadget *Gad, Msg M, ULONG Flags);
 
-
-
+/** this is the struct that is the extended struct Library
+ * That is created with OpenLibrary().
+ * struct Library -> struct ClassLibrary -> struct ExtClassLib
+ * It does only manage registering the class with MakeClass()
+ * versioning, and closing itsle. This is not the class definition
+ * of the object instance, It doesnt have to evolve.
+ * must correspond to equivalent in classinit.s
+ */
+struct ExtClassLib
+{
+    struct ClassLibrary cb_ClassLibrary;
+    UWORD cb_Pad;
+    APTR  cb_SysBase;
+    APTR  cb_SegList;
+};
 
 #ifdef __cplusplus
 }

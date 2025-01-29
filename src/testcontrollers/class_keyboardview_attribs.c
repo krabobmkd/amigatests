@@ -2,8 +2,12 @@
 #include <proto/exec.h>
 #include <proto/intuition.h>
 #include <proto/dos.h>
-#include <proto/alib.h>
 
+#ifdef KEYBOARDVIEW_STATICLINK
+    #include <proto/alib.h>
+#else
+    #include "minialib.h"
+#endif
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
@@ -138,7 +142,7 @@ ULONG F_SAVED KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *
    )
   {
     data=tag->ti_Data;
- Printf("SetAttr:%lx\n",tag->ti_Tag);
+// Printf("SetAttr:%lx\n",tag->ti_Tag);
 
     switch(tag->ti_Tag)
     {

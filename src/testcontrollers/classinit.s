@@ -3,6 +3,7 @@
 
         NOLIST
         INCLUDE "lvo/exec_lib.i"
+        INCLUDE "lvo/dos_lib.i"
         INCLUDE "exec/types.i"
         INCLUDE "exec/libraries.i"
         INCLUDE "exec/lists.i"
@@ -22,31 +23,30 @@
 	; ClassLib -> ClassLibrary -> Library
    STRUCTURE ClassLib,0
 	STRUCT	cb_ClassLibrary,ClassLibrary_SIZEOF
-        UWORD	cb_Pad
+    UWORD	cb_Pad
 	ULONG	cb_SysBase
 	;ULONG   cb_UtilityBase
 	;ULONG	cb_IntuitionBase
 	;ULONG	cb_GfxBase
 	; actually needed for expunge
 	ULONG	cb_SegList
-
+	ULONG   cb_DOSBase
    LABEL ClassLib_SIZEOF
 
+; important must be the same...
+VERSION		EQU	1
+REVISION	EQU	0
 
-VERSION		EQU	42
-REVISION	EQU	2
-DATE	MACRO
-		dc.b	'7.3.94'
-	ENDM
-VERS	MACRO
-		dc.b	'led 42.2'
-	ENDM
-VSTRING	MACRO
-		dc.b	'led 42.2 (7.3.94)',13,10,0
-	ENDM
-VERSTAG	MACRO
-		dc.b	0,'$VER: led 42.2 (7.3.94)',0
-	ENDM
+
+;VERS	MACRO
+;		dc.b	'keyboardview.gadget 1.0'
+;	ENDM
+;VSTRING	MACRO
+;		dc.b	'keyboardview.gadget 42.2 (7.3.94)',13,10,0
+;	ENDM
+;VERSTAG	MACRO
+;		dc.b	0,'$VER: keyboardview.gadget 42.2 (7.3.94)',0
+;	ENDM
 ; -----------------------------
 
 CALL	MACRO
@@ -57,8 +57,8 @@ CALL	MACRO
 
 	XREF	_KeyboardView_CreateClass
 	XREF	_KeyboardView_DestroyClass
-
-        XREF    ENDCODE
+	XREF	_KeyboardViewClassID
+	XREF	_KeyboardViewVersionString
 
 ;---------------------------------------------------------------------------
 
@@ -66,12 +66,6 @@ CALL	MACRO
 
 		; needed by the gcc 6.5 trick as the bin entry point.
 		XDEF	__start
-
-;        XDEF    LibInit
-;        XDEF    LibOpen
-;        XDEF    LibClose
-;        XDEF    LibExpunge
-;        XDEF	LibReserved
 
 ;---------------------------------------------------------------------------
 
@@ -83,27 +77,27 @@ Start:
 
 ;-----------------------------------------------------------------------
 
-ROMTAG:
+RomTag:
         DC.W    RTC_MATCHWORD           ; UWORD RT_MATCHWORD
-        DC.L    ROMTAG                  ; APTR  RT_MATCHTAG
-        DC.L    ENDCODE                 ; APTR  RT_ENDSKIP
+        DC.L    RomTag                  ; APTR  RT_MATCHTAG
+        DC.L    EndCode                 ; APTR  RT_ENDSKIP
         DC.B    RTF_AUTOINIT            ; UBYTE RT_FLAGS
         DC.B    VERSION                 ; UBYTE RT_VERSION
         DC.B    NT_LIBRARY              ; UBYTE RT_TYPE
         DC.B    0                       ; BYTE  RT_PRI
-        DC.L    LibName                 ; APTR  RT_NAME
-        DC.L    LibId                   ; APTR  RT_IDSTRING
+        DC.L    LibName ; _KeyboardViewClassID    ; APTR  RT_NAME   libname is same as classid (myclass.class or myclass.gadget)
+        DC.L    LibId ; _KeyboardViewVersionString ; APTR  RT_IDSTRING  version string
         DC.L    LibInitTable            ; APTR  RT_INIT
 
-LibName DC.B 'krb.keyboardview.class',0
-LibId   VSTRING
+LibName DC.B 'keyboardview.gadget',0
+LibId   dc.b 'woot',0
 
         CNOP    0,4
 
 LibInitTable:
         DC.L    ClassLib_SIZEOF
         DC.L    LibFuncTable
-        DC.L    0
+        DC.L    0   ; optional datatable "initializes static data structures" exec/InitStruct "exec/initializers.i"
         DC.L    LibInit
 
 ; note: apparently an historic .w relative pmointers mode are supported (starting with -1?)
@@ -111,8 +105,8 @@ LibFuncTable:
 	DC.L	LibOpen
 	DC.L	LibClose
 	DC.L	LibExpunge
-	DC.L	LibReserved
-	DC.L	-1
+	DC.L	0 ; LibReserved
+	DC.L	-1 ; end marker
 
 ;-----------------------------------------------------------------------
 
@@ -125,12 +119,26 @@ LibInit:
         move.l  a6,cb_SysBase(a5)
         move.l  a0,cb_SegList(a5)
 
-        move.w	#REVISION,LIB_REVISION(a5)
+    move.w	#REVISION,LIB_REVISION(a5)
+
+        move.l #AN_BadGadget,d7
+        CALL Alert
+
 
 ;        move.l  #AO_GraphicsLib,d7
 ;        lea     GfxName(pc),a1
 ;        bsr.s	OpenLib
 ;        move.l  d0,cb_GfxBase(a5)
+
+;        move.l  #1,d7
+ ;       lea     DosName(pc),a1
+  ;      bsr.s	OpenLib
+   ;     move.l  d0,cb_DOSBase(a5)
+
+;        lea     Pouet(pc),a0
+;        move.l  d0,a6
+;        CALL Printf
+
 
 ;        move.l  #AO_Intuition,d7
 ;        lea     IntuitionName(pc),a1
@@ -145,6 +153,8 @@ LibInit:
         move.l  a5,d0
         movem.l (sp)+,a0/a5/d7
         rts
+
+LIBVERSION    EQU  39
 
 OpenLib:
         moveq   #LIBVERSION,d0
@@ -162,11 +172,12 @@ FailInit:
         moveq   #0,d0
         rts
 
-LIBVERSION    EQU  37
 ;GfxName       DC.B "graphics.library",0
 ;IntuitionName DC.B "intuition.library",0
 ;UtilityName   DC.B "utility.library",0
+;DosName  DC.B "dos.library",0
 
+;Pouet dc.b "pouet pouet\n",0
         CNOP    0,2
 
 ;-----------------------------------------------------------------------
@@ -178,7 +189,7 @@ LibOpen:
 	tst.w	LIB_OPENCNT(a6)
 	bne.s	1$
 
-	bsr	_KeyboardView_CreateClass
+	bsr.l	_KeyboardView_CreateClass
 	tst.l	d0
 	bne.s	1$
 
@@ -201,7 +212,7 @@ LibClose:
 	subq.w	#1,LIB_OPENCNT(a6)
 	bne.s	1$			; if openers, don't remove class
 
-	bsr	_KeyboardView_DestroyClass		; zero openers, so try to remove class
+	bsr.l	_KeyboardView_DestroyClass		; zero openers, so try to remove class
 
 1$:
 	; if delayed expunge bit set, then try to get rid of the library
@@ -270,9 +281,9 @@ DoExpunge:
 
 ;-----------------------------------------------------------------------
 
-LibReserved:
-        moveq   #0,d0
-        rts
+;LibReserved:
+;        moveq   #0,d0
+;        rts
 
 ;-----------------------------------------------------------------------
 
@@ -288,8 +299,8 @@ CloseLibs:
 		rts
 ;-----------------------------------------------------------------------
 
-
-
-;-----------------------------------------------------------------------
-
-        END
+   ; EndCode is a marker that show the end of your code.  Make sure it does not span
+   ; sections nor is before the rom tag in memory!  It is ok to put it right after the ROM
+   ; tag--that way you are always safe.  I put it here because it happens to be the "right"
+   ; thing to do, and I know that it is safe in this case.
+EndCode:

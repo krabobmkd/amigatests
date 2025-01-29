@@ -1,8 +1,11 @@
 
 #include <proto/exec.h>
 #include <proto/intuition.h>
-#include <proto/alib.h>
-
+#ifdef KEYBOARDVIEW_STATICLINK
+    #include <proto/alib.h>
+#else
+    #include "minialib.h"
+#endif
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>

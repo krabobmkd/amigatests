@@ -13,6 +13,7 @@
 #include <proto/graphics.h>
 //#include <proto/icon.h>
 #include <proto/intuition.h>
+#include <exec/alerts.h>
 //#include <proto/utility.h>
 
 
@@ -42,12 +43,17 @@
 
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
+
+// boopsi classes bases:
 struct Library *WindowBase=NULL;
 struct Library *LayoutBase=NULL;
 struct Library *BitMapBase=NULL;
 struct Library *ButtonBase=NULL;
 struct Library *CheckBoxBase=NULL;
 
+#ifndef KEYBOARDVIEW_STATICLINK
+struct Library *KeyBoardViewBase=NULL;
+#endif
 
 //struct TextAttr helvetica15bu = { (STRPTR)"helvetica.font", 15, FSF_UNDERLINED | FSF_BOLD, FPF_DISKFONT };
 //struct TextAttr garnet16 = { (STRPTR)"garnet.font", 16, 0, FPF_DISKFONT };
@@ -124,7 +130,13 @@ int main(int argc, char **argv)
 #ifdef KEYBOARDVIEW_STATICLINK
     KeyboardView_static_class_init();
 #else
+    if ( ! (KeyBoardViewBase = OpenLibrary(
+                "keyboardview.gadget"
+                ,VERSION_KEYBOARDVIEW)))
+        cleanexit("Can't open keyboardview.gadget");
+    printf("KeyBoardViewBase:%08x\n",(int)KeyBoardViewBase);
 #endif
+//    Alert(AN_BadGadget);
 
 
 //    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
@@ -335,8 +347,15 @@ void exitclose(void)
     }
 
 
+#ifndef KEYBOARDVIEW_STATICLINK
+    if(KeyBoardViewBase) CloseLibrary(KeyBoardViewBase);
+#endif
+    if(CheckBoxBase) CloseLibrary(CheckBoxBase);
+    if(ButtonBase) CloseLibrary(ButtonBase);
+    if(BitMapBase) CloseLibrary(BitMapBase);
     if(LayoutBase) CloseLibrary(LayoutBase);
     if(WindowBase) CloseLibrary(WindowBase);
+
     if(GfxBase) CloseLibrary((struct Library*)GfxBase);
     if(IntuitionBase) CloseLibrary((struct Library*)IntuitionBase);
 

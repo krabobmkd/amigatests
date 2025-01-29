@@ -2,8 +2,11 @@
 #include <proto/exec.h>
 #include <proto/intuition.h>
 #include <proto/dos.h>
-#include <proto/alib.h>
-
+#ifdef KEYBOARDVIEW_STATICLINK
+    #include <proto/alib.h>
+#else
+    #include "minialib.h"
+#endif
 //#include <proto/utility.h>
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
@@ -23,7 +26,7 @@ ULONG F_SAVED KeyboardView_Dispatcher(
 {
   KeyboardView *gdata;
   ULONG retval=0;
-    Printf("KeyboardView_Dispatcher %lx %lx\n",(int)C,(int)Gad);
+   // Printf("KeyboardView_Dispatcher %lx %lx\n",(int)C,(int)Gad);
   gdata=INST_DATA(C, Gad);
 
 //  DKP("Dispatcher MethodID %08lx\n", M->MethodID);
@@ -31,12 +34,12 @@ ULONG F_SAVED KeyboardView_Dispatcher(
   switch(M->MethodID)
   {
     case OM_NEW:
-    Printf("kbd OM_NEW\n");
+ //   Printf("kbd OM_NEW\n");
       if(Gad=(struct Gadget *)DoSuperMethodA(C,(Object *)Gad,(Msg)M))
       {
 
         gdata=INST_DATA(C, Gad);
-    Printf("instance:%lx\n",(int)gdata);
+ //   Printf("instance:%lx\n",(int)gdata);
 //        SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
 
 //        gdata->Pattern=NewObject(0,(UBYTE *)"mlr_ordered.pattern", TAG_DONE);
@@ -56,20 +59,20 @@ ULONG F_SAVED KeyboardView_Dispatcher(
       break;
 
     case OM_UPDATE:
-    Printf("kbd OM_UPDATE\n");
+ //   Printf("kbd OM_UPDATE\n");
     case OM_SET:
-        Printf("kbd OM_SET:\n");
+   //     Printf("kbd OM_SET:\n");
       retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
       KeyboardView_SetAttrs(C,Gad,(struct opSet *)M);
      break;
 
     case OM_GET:
-    Printf("kbd OM_GET\n");
+  //  Printf("kbd OM_GET\n");
       KeyboardView_GetAttr(C,Gad,(struct opGet *)M);
      break;
 
     case OM_DISPOSE:
-    Printf("kbd OM_DISPOSE\n");
+  //  Printf("kbd OM_DISPOSE\n");
       /*DisposeObject(gdata->Pattern);
       DisposeObject(gdata->Bevel);
       */
@@ -77,12 +80,12 @@ ULONG F_SAVED KeyboardView_Dispatcher(
       break;
 
     case GM_HITTEST:
-    Printf("kbd GM_HITTEST\n");
+ //   Printf("kbd GM_HITTEST\n");
       retval = GMR_GADGETHIT;
       break;
 
     case GM_GOACTIVE:
-    Printf("kbd GM_GOACTIVE\n");
+  //  Printf("kbd GM_GOACTIVE\n");
       Gad->Flags |= GFLG_SELECTED;
       retval=KeyboardView_HandleInput(C,Gad,(struct gpInput *)M);
 //      gad_Render(C,Gad,(APTR)M,GREDRAW_UPDATE);
@@ -90,35 +93,35 @@ ULONG F_SAVED KeyboardView_Dispatcher(
       break;
 
     case GM_GOINACTIVE:
-    Printf("kbd GM_GOINACTIVE\n");
+   // Printf("kbd GM_GOINACTIVE\n");
       Gad->Flags &= ~GFLG_SELECTED;
       KeyboardView_Render(C,Gad,(APTR)M,GREDRAW_UPDATE);
       break;
 
     case GM_LAYOUT:
-    Printf("kbd GM_LAYOUT\n");
+  //  Printf("kbd GM_LAYOUT\n");
      // retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
       retval=1; //KeyboardView_Layout(C,Gad,(struct gpLayout *)M);
       break;
 
     case GM_RENDER:
-    Printf("kbd GM_RENDER\n");
+  //  Printf("kbd GM_RENDER\n");
       retval=KeyboardView_Render(C,Gad,(struct gpRender *)M,0);
       break;
 
     case GM_HANDLEINPUT:
-    Printf("kbd GM_HANDLEINPUT\n");
+  //  Printf("kbd GM_HANDLEINPUT\n");
       retval=KeyboardView_HandleInput(C,Gad,(struct gpInput *)M);
       break;
 
     case GM_DOMAIN:
-    Printf("kbd GM_DOMAIN\n");
+   // Printf("kbd GM_DOMAIN\n");
       KeyboardView_Domain(C, Gad, (APTR)M);
       retval=1;
       break;
 
     default:
-    Printf(" - default unmanaged method - %lx\n",);
+  //  Printf(" - default unmanaged method - %lx\n",);
       retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
       break;
   }

@@ -37,7 +37,7 @@ ULONG F_SAVED KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain 
   KeyboardView *gdata=0;
 
   if(Gad) gdata=INST_DATA(C, Gad);
- Printf("KeyboardView_Domain data:%lx\n",(int)gdata);
+// Printf("KeyboardView_Domain data:%lx\n",(int)gdata);
 
 
   D->gpd_Domain.Left=0;
@@ -90,7 +90,7 @@ ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout 
   BOOL swap=0;
 
 //  float cfloat,aspect;
-    Printf("KeyboardView_Layout: %lx\n",(int)Gad);
+//    Printf("KeyboardView_Layout: %lx\n",(int)Gad);
 //    Printf("left: %ld top: %ld width: %ld heigt: %ld\n",
 //    (int)Gad->LeftEdge,(int)Gad->TopEdge,(int)Gad->Width,(int)Gad->Height);
 
