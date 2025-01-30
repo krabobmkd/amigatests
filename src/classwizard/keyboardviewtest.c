@@ -1,8 +1,13 @@
-//#define  ALL_REACTION_CLASSES
-//#define  ALL_REACTION_MACROS
+/** little boopsi/reaction example
+ * that uses the gadget to test,
+ * in a layout, with a button.
+ * This will use a static link of the class definition
+ * when XXXXX_STATICLINK is defined,
+ * (which is usefull for debugging)
+ * and will search the shared .class file
+ * when this is not defined, which "is the way".
+ */
 
-
-//#include <reaction/reaction_macros.h>
 #include <clib/alib_protos.h>
 #include <clib/reaction_lib_protos.h>
 
@@ -16,8 +21,7 @@
 #include <exec/alerts.h>
 //#include <proto/utility.h>
 
-
-//too generic
+// too generic, include planet earth.
 //#include <reaction/reaction.h>
 
 #include <proto/window.h>
@@ -29,17 +33,17 @@
 #include <proto/button.h>
 #include <gadgets/button.h>
 
+// this is the public definition of the class we test:
 #include "class_keyboardview.h"
 
 
-// because macros are a nightmare
+// because original reaction macros are a nightmare
+// and are not GCC compatible anyway.
 #include "reactioninlines.h"
-
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
 
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
@@ -134,23 +138,17 @@ int main(int argc, char **argv)
                 "keyboardview.gadget"
                 ,VERSION_KEYBOARDVIEW)))
         cleanexit("Can't open keyboardview.gadget");
-    printf("KeyBoardViewBase:%08x\n",(int)KeyBoardViewBase);
 #endif
-//    Alert(AN_BadGadget);
-
 
 //    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
 //        cleanexit("Can't open checkbox.gadget");
 
-    // = = = = = create
+    // = = = = = now that needed classes arte loaded
+    // = = = = = creates the instances...
 
     app->lockedscreen = LockPubScreen(NULL);
     if (!app->lockedscreen) cleanexit("Can't lock screen");
-/*
-        Object *keyboardlayout;
-        Object *llpadslayout;
-        Object *bottombarlayout;
-*/
+
     app->testbt = NewObject( NULL, "button.gadget",
                               //      GA_TextAttr, &garnet16,
                                     GA_Text, "B_ig Button",

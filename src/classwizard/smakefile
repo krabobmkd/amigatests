@@ -2,13 +2,13 @@
 # CFLAGS  = data=far nominc streq nostkchk
 #  data=near
 SCOPTS = UNSCHAR STRMERGE NOSTKCHK PARMS=REGISTER data=far OPTIMIZE CPU=68000 DEFINE=OLDINCLUDES=1	
-LIBS   =  LIB:amiga.lib
-# LIB:cgraphx.lib LIB:sc.lib
+LIBS = LIB:sc.lib
+# LIB:cgraphx.lib LIB:sc.lib IB:amiga.lib
 SLO    = SC SD ND
-BUILDDIR = build
+BUILDDIR = build-sasc
 AFLAGS = -dSASASM=1
 
-BINARIES = keyboardview.gadget
+BINARIES = keyboardview.gadget keyboardviewTest
 # keyboardviewTest keyboardviewTest_static
 
 GADGETOBJS = \
@@ -39,12 +39,20 @@ $(BUILDDIR)/class_keyboardview_render.c.o: class_keyboardview_render.c $(BUILDDI
 $(BUILDDIR)/class_keyboardview_handleinput.c.o: class_keyboardview_handleinput.c $(BUILDDIR)
 	sc class_keyboardview_handleinput.c $(SCOPTS) OBJNAME=$@
 
-
 $(BUILDDIR):
 	-makedir $(BUILDDIR)
-	
+
 keyboardview.gadget: $(GADGETOBJS)
 	slink $(GADGETOBJS) lib $(LIBS) to $@ 
+
+# - - - - - - - - - - - -
+$(BUILDDIR)/keyboardviewtest.c.o: keyboardviewtest.c $(BUILDDIR)
+	sc keyboardviewtest.c $(SCOPTS) OBJNAME=$@
+
+keyboardviewTest: $(BUILDDIR)/keyboardviewtest.c.o
+	slink FROM LIB:c.o keyboardviewtest.c.o lib $(LIBS) to $@
+
+# - - - - - - - - - - - -
 
 clean:
 	-delete ALL FORCE $(BUILDDIR)

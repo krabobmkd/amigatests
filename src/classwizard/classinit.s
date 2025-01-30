@@ -15,7 +15,7 @@
 
         LIST
 
-        ; SASC has different includes,
+        ; SASC has different include path for lvo (OS2?)
         ; let's just inlines these values
 _LVOOpenLibrary		EQU	-552
 _LVOCloseLibrary	EQU	-414
@@ -30,8 +30,6 @@ _LVOFreeMem     EQU	-210
 
 	INCLUDE "intuition/classes.i"
 
-
-
  ; from modern intuition/classes.i, missing in SASC6.5
  ifnd cl_Pad
   STRUCTURE ClassLibrary,0
@@ -42,7 +40,8 @@ _LVOFreeMem     EQU	-210
  endc
 	; what is actually allocated as a opened library
 	; ClassLib -> ClassLibrary -> Library
-	STRUCTURE ClassLib,0
+	; THIS MUST CORRESPOND TO C STRUCT struct ExtClassLib in class_XXXX_private.h
+	STRUCTURE ExtClassLib,0
 		STRUCT	cb_ClassLibrary,ClassLibrary_SIZEOF
 		ULONG	cb_SysBase
 		;ULONG   cb_UtilityBase
@@ -225,7 +224,7 @@ LibOpen:
 
 ;	bsr.l	_KeyboardView_CreateClass   sasc "asm" does not support .L for externs ??
 	ifd SASASM
-		jsr.l	@KeyboardView_CreateClass
+		jsr	@KeyboardView_CreateClass
 	else
 		jsr.l	_KeyboardView_CreateClass
 	endc
@@ -258,7 +257,7 @@ LibClose:
 	;bsr.l	_KeyboardView_DestroyClass		SASC6.5 asm only support ".w externs"
 	ifd SASASM
 		;bsr.w	@KeyboardView_DestroyClass
-		jsr.l	@KeyboardView_DestroyClass
+		jsr	@KeyboardView_DestroyClass
 	else
 		;bsr.w	_KeyboardView_DestroyClass
 		jsr.l	_KeyboardView_DestroyClass

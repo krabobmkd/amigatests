@@ -42,7 +42,7 @@ add_executable(keyboardview.gadget
 		)
 
 target_link_options(keyboardview.gadget PRIVATE -ffreestanding -nostdlib -nostartfiles -Wl,-e,__start)
-target_compile_options(keyboardview.gadget PRIVATE -Os -m68000 -fomit-frame-pointer -O0 )
+target_compile_options(keyboardview.gadget PRIVATE -Os -m68020 -fomit-frame-pointer )
 target_compile_definitions(keyboardview.gadget PRIVATE PRIVATE VERSION_STRING="${VERSTRING}")
 
 

@@ -319,6 +319,8 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             break;
 
           case SELECTDOWN:
+
+
              if ( ((Input->gpi_Mouse).X < 0) ||
                  ((Input->gpi_Mouse).X >= Gad->Width) ||
                  ((Input->gpi_Mouse).Y < 0) ||
@@ -336,6 +338,13 @@ ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpIn
             }
             else
             {
+            // mouse click inside gadget !
+            // recenter circle proportionaly.
+            if(Gad->Width>0)
+                gdata->_circleCenterX = ((Input->gpi_Mouse).X <<16)/Gad->Width;
+            if(Gad->Height>0)
+                gdata->_circleCenterY = ((Input->gpi_Mouse).Y <<16)/Gad->Height;
+
               gdata->_MouseMode=1;
               KeyboardView_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
               KeyboardView_Notify(C,Gad,(APTR)Input, 0);

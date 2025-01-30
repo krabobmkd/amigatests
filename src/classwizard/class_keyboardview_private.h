@@ -3,6 +3,7 @@
 
 #include "class_keyboardview.h"
 
+// not much sense because c++ static runtime are hard to link.
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,11 +16,18 @@ extern "C" {
 #include "asmmacros.h"
 
 /**
+*  this is the internal private struct that own the data of the object instances.
 * an important principle of boopsi is that structure for the class is hidden to the consumers.
+* the consumers will only see the public header, and will do setAtribs()/GetAttribs()/Domethod()
+* DEVTODO: make this class evolve to retain the data needed to draw and interact with your widget.
 */
 typedef struct IKeyboardView {
+    // let's say we have coordinates of the center of the circle
+    UWORD _circleCenterX,_circleCenterY;
+
     ULONG _MouseMode;
     ULONG _EditMode;
+
 } KeyboardView;
 
 ULONG F_SAVED KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);
@@ -34,7 +42,10 @@ void F_SAVED KeyboardView_LibCleanup( REG(struct Library *LibBase,a6) );
 
 // - - - - -- -
 
-// for dispatcher, very wise.
+/** for dispatcher, very wise use of union.
+ *  each  struct also starts with MethodID.
+ * and they are the very parameters for each methods.
+ */
 typedef union MsgUnion
 {
   ULONG  MethodID;
@@ -63,22 +74,26 @@ struct ClassLibrary
 #endif
 /** this is the struct that is the extended struct Library
  * That is created with OpenLibrary().
- * struct Library -> struct ClassLibrary -> struct ExtClassLib
- * It does only manage registering the class with MakeClass()
- * versioning, and closing itsle. This is not the class definition
- * of the object instance, It doesnt have to evolve.
+ * But as it just manages a BOOPSI class there are just the open/close functions.
+ * which themselves only manages registering the class with MakeClass()/AddClass()
+ * versioning, and closing itself. This is *not* the boopsi class definition which is up there.
+ * So it doesnt have to evolve, and can keep same name for each projects.
+ *
  * must correspond to equivalent in classinit.s
  */
 struct ExtClassLib
 {
-    //    struct ClassLibrary cb_ClassLibrary;
+    // (see down there)   struct ClassLibrary cb_ClassLibrary;
     // because SASC6.5 have old includes with no struct ClassLibrary
+
     struct Library	 cl_Lib;	/* Embedded library */
     UWORD		 cl_Pad;	/* Align the structure */
     Class		*cl_Class;	/* Class pointer */
 
-    APTR  cb_SysBase;
-    APTR  cb_SegList;
+    APTR  cb_SysBase; // this is passed as LibInit
+    APTR  cb_SegList; // this is passed at OpenLib and needed at expunge.
+    // note: old libraries examples adds bases for graphics/intuition/utility after this
+    // but C compiler will only search then in globals...
 };
 
 #ifdef __cplusplus

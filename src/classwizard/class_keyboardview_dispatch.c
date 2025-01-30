@@ -4,6 +4,7 @@
     #include <proto/dos.h>
 #ifdef __SASC
     #include <clib/alib_protos.h>
+//#include "minialib.h"
     #ifndef GM_DOMAIN
         #define GM_DOMAIN	(7)
     #endif
@@ -47,6 +48,13 @@ ULONG F_SAVED KeyboardView_Dispatcher(
       {
 
         gdata=INST_DATA(C, Gad);
+        // DEVTODO: here you write the default values for your objects.
+        gdata->_circleCenterX = 32767;
+        gdata->_circleCenterY = 32767;
+
+        // set gadget (super class) attributes for this instance like this:
+   //TODO     SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
+
  //   Printf("instance:%lx\n",(int)gdata);
 //        SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
 

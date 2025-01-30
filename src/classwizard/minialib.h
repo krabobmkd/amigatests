@@ -48,23 +48,36 @@ ULONG  __stdargs CallHookPkt( struct Hook *hook, APTR object, APTR paramPacket )
 //	lea	(12,sp),sp
 //	return r;
 //}
+#ifdef __SASC
+#define AINLINE __inline
+#else
+#define AINLINE static inline
+#endif
+
 // CallHookPkt is rom utilitybase...
 extern struct Library *UtilityBase;
 
-static inline ULONG DoMethodA( Object *obj, Msg message ) {
+AINLINE ULONG DoMethodA( Object *obj, Msg message ) {
     //   if (!obj || !message) return 0L;
    return CallHookPkt((struct Hook *) OCLASS(obj), obj, message);
 }
-static inline ULONG DoMethod( Object *obj, ULONG methodID, ... ) {
+AINLINE ULONG DoMethod( Object *obj, ULONG methodID, ... ) {
     //   if (!obj) return 0L;
    return CallHookPkt((struct Hook *) OCLASS(obj), obj, (APTR)&methodID);
 }
-static inline ULONG DoSuperMethodA( struct IClass *cl, Object *obj, Msg message ) {
+AINLINE ULONG DoSuperMethodA( struct IClass *cl, Object *obj, Msg message ) {
    return CallHookPkt((struct Hook *)cl->cl_Super, obj, message);
 }
-static inline ULONG DoSuperMethod( struct IClass *cl, Object *obj, ULONG methodID, ... ) {
+AINLINE ULONG DoSuperMethod( struct IClass *cl, Object *obj, ULONG methodID, ... ) {
    return CallHookPkt((struct Hook *)cl->cl_Super, obj, (APTR)&methodID);
 }
+
+// ULONG  __stdargs SetSuperAttrs( struct IClass *cl, Object *obj, ULONG tag1, ... ) {
+
+// }
+
+
+
 
 #endif
 #endif

@@ -15,7 +15,6 @@ extern "C" {
 
 #define KeyboardView_SUPERCLASS_ID "gadgetclass"
 #define KeyboardView_CLASS_ID      "keyboardview.gadget"
-//#define KeyboardView_CLASS_LIBID   "keyboardview.gadget"
 
 #ifdef KEYBOARDVIEW_STATICLINK
 // just use this one once to init class, will use a atexit() to close

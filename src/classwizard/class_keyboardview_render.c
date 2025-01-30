@@ -3,6 +3,8 @@
 #include <proto/intuition.h>
 #include <proto/graphics.h>
 #include <proto/dos.h>
+#include <proto/layers.h>
+
 #ifdef __SASC
     #include <clib/alib_protos.h>
 #else
@@ -112,7 +114,10 @@ ULONG F_SAVED KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain 
 }
 
 
-// GM_LAYOUT
+// method GM_LAYOUT
+/**
+ * When we have to resize what's inside.
+ */
 ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
 {
   KeyboardView *gdata;
@@ -239,18 +244,29 @@ ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender 
   if(rp)
   {
 
-      int left   =Gad->LeftEdge;
-      int top    =Gad->TopEdge;
-      int width  =Gad->Width;
-      int height =Gad->Height;
+      WORD left   =Gad->LeftEdge;
+      WORD top    =Gad->TopEdge;
+      WORD width  =Gad->Width;
+      WORD height =Gad->Height;
 
       SetDrMd(rp,JAM1);
       SetAPen(rp,1);
       RectFill(rp,left,
                   top,
                   left + width  -1,
-                  top  + height -1)
-                  ;
+                  top  + height -1) ;
+
+
+
+    {
+        UWORD xc = left + ((width*gdata->_circleCenterX)>>16);
+        UWORD yc = top + ((height*gdata->_circleCenterY)>>16);
+        SetAPen(rp,2);
+        DrawEllipse(rp,xc,yc,width>>1,height>>1);
+        SetAPen(rp,3);
+        DrawEllipse(rp,xc,yc,width>>2,height>>2);
+    }
+
  //   RectFill( struct RastPort *rp, LONG xMin, LONG yMin, LONG xMax, LONG yMax );
 //    if(update == GREDRAW_UPDATE)
 //    {

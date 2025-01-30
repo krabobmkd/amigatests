@@ -4,6 +4,7 @@
 #include <proto/dos.h>
 
 #ifdef __SASC
+//    #include "minialib.h"
     #include <clib/alib_protos.h>
 #else
     #ifdef KEYBOARDVIEW_STATICLINK
