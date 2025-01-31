@@ -34,6 +34,7 @@ typedef struct IKeyboardView {
 
 #ifdef USE_REGION_CLIPPING
     struct Region *_clipRegion;
+    int         _updateClipRegion;
 #endif
 } KeyboardView;
 

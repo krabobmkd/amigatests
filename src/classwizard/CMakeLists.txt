@@ -53,15 +53,12 @@ target_compile_definitions(keyboardview.gadget PRIVATE PRIVATE VERSION_STRING="$
 
 
 # exe that consume the .class
-
-
 add_executable(KeyboardViewTest
 		reactioninlines.h
 		keyboardviewtest.c
 		class_keyboardview.h
 		)
-# target_include_directories(TestControllers PRIVATE . )
 
-target_compile_options(KeyboardViewTest PRIVATE -s -save-temps -m68000 )
+target_compile_options(KeyboardViewTest PRIVATE -Os -save-temps -m68000 )
 target_link_options(KeyboardViewTest PRIVATE -s )
 install(TARGETS KeyboardViewTest DESTINATION "${CMAKE_SOURCE_DIR}/..")

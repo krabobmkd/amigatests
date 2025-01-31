@@ -128,23 +128,10 @@ ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout 
 //    WORD top    =Gad->TopEdge;
 //    WORD width  =Gad->Width;
 //    WORD height =Gad->Height;
-
-  gdata=INST_DATA(C, Gad);
-
-#ifdef USE_REGION_CLIPPING
-    {
-        struct Rectangle gadgetrec;
-        ClearRegion(gdata->_clipRegion);
-        gadgetrec.MinX = Gad->LeftEdge;
-        gadgetrec.MinY = Gad->TopEdge;
-        gadgetrec.MaxX = Gad->LeftEdge + Gad->Width  -1;
-        gadgetrec.MaxY = Gad->TopEdge  + Gad->Height -1;
-        OrRectRegion(gdata->_clipRegion, &gadgetrec);
-    }
-#endif
-
+    gdata=INST_DATA(C, Gad);
+    gdata->_updateClipRegion = 1;
 //  float cfloat,aspect;
-//    Printf("KeyboardView_Layout: %lx\n",(int)Gad);
+//    Printf("KeyboardView_Layout: %ld %ld\n",(int)Gad->Width,(int)Gad->Height);
 //    Printf("left: %ld top: %ld width: %ld heigt: %ld\n",
 //    (int)Gad->LeftEdge,(int)Gad->TopEdge,(int)Gad->Width,(int)Gad->Height);
 
@@ -275,8 +262,16 @@ ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender 
 //    gadgetrec.MaxY = top  + height -1;
 // In OM_NEW : gdata->_clipRegion = NewRegion(); , OM_DISPOSE DisposeRegion(gdata->_clipRegion);
 #ifdef USE_REGION_CLIPPING
-//    ClearRegion(gdata->_clipRegion);
-//    OrRectRegion(gdata->_clipRegion, &gadgetrec);
+    if(1){   // must be done each time ?
+        struct Rectangle gadgetrec;
+        ClearRegion(gdata->_clipRegion);
+        gadgetrec.MinX = Gad->LeftEdge;
+        gadgetrec.MinY = Gad->TopEdge;
+        gadgetrec.MaxX = Gad->LeftEdge + Gad->Width  -1;
+        gadgetrec.MaxY = Gad->TopEdge  + Gad->Height -1;
+        OrRectRegion(gdata->_clipRegion, &gadgetrec);
+        gdata->_updateClipRegion = 0;
+    }
     oldClipRegion = InstallClipRegion( rp->Layer, gdata->_clipRegion);
 #endif
       SetDrMd(rp,JAM1);
