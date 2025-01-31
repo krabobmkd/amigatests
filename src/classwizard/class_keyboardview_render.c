@@ -124,12 +124,30 @@ ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout 
   LONG rows,cols,l,topedge,leftedge,width,height;
   BOOL swap=0;
 
+//    WORD left   =Gad->LeftEdge;
+//    WORD top    =Gad->TopEdge;
+//    WORD width  =Gad->Width;
+//    WORD height =Gad->Height;
+
+  gdata=INST_DATA(C, Gad);
+
+#ifdef USE_REGION_CLIPPING
+    {
+        struct Rectangle gadgetrec;
+        ClearRegion(gdata->_clipRegion);
+        gadgetrec.MinX = Gad->LeftEdge;
+        gadgetrec.MinY = Gad->TopEdge;
+        gadgetrec.MaxX = Gad->LeftEdge + Gad->Width  -1;
+        gadgetrec.MaxY = Gad->TopEdge  + Gad->Height -1;
+        OrRectRegion(gdata->_clipRegion, &gadgetrec);
+    }
+#endif
+
 //  float cfloat,aspect;
 //    Printf("KeyboardView_Layout: %lx\n",(int)Gad);
 //    Printf("left: %ld top: %ld width: %ld heigt: %ld\n",
 //    (int)Gad->LeftEdge,(int)Gad->TopEdge,(int)Gad->Width,(int)Gad->Height);
 
-//re  gdata=INST_DATA(C, Gad);
 
 
 //  DKP("GM_LAYOUT\n");
@@ -231,23 +249,36 @@ ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender 
 
   gdata=INST_DATA(C, Gad);
 
-//  if(Render->MethodID==GM_RENDER)
-//  {
-//    rp=Render->gpr_RPort;
-//    update=Render->gpr_Redraw;
-//  }
-//  else
-//  {
+  if(Render->MethodID==GM_RENDER)
+  {
+    rp=Render->gpr_RPort;
+    update=Render->gpr_Redraw;
+  }
+  else
+  {
     rp = ObtainGIRPort(Render->gpr_GInfo);
-//  }
+  }
 
   if(rp)
   {
+//  struct Rectangle gadgetrec;
+    struct Region *oldClipRegion;
       WORD left   =Gad->LeftEdge;
       WORD top    =Gad->TopEdge;
       WORD width  =Gad->Width;
       WORD height =Gad->Height;
 
+    //
+//    gadgetrec.MinX = left;
+//    gadgetrec.MinY = top;
+//    gadgetrec.MaxX = left + width  -1;
+//    gadgetrec.MaxY = top  + height -1;
+// In OM_NEW : gdata->_clipRegion = NewRegion(); , OM_DISPOSE DisposeRegion(gdata->_clipRegion);
+#ifdef USE_REGION_CLIPPING
+//    ClearRegion(gdata->_clipRegion);
+//    OrRectRegion(gdata->_clipRegion, &gadgetrec);
+    oldClipRegion = InstallClipRegion( rp->Layer, gdata->_clipRegion);
+#endif
       SetDrMd(rp,JAM1);
       SetAPen(rp,1);
       RectFill(rp,left,
@@ -259,11 +290,13 @@ ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender 
         UWORD yc = top + ((height*gdata->_circleCenterY)>>16);
         SetAPen(rp,2);
         DrawEllipse(rp,xc,yc,width>>1,height>>1);
-//        SetAPen(rp,3);
-//        DrawEllipse(rp,xc,yc,width>>2,height>>2);
+        SetAPen(rp,3);
+        DrawEllipse(rp,xc,yc,width>>2,height>>2);
     }
-
-  //  if (Render->MethodID != GM_RENDER)
+#ifdef USE_REGION_CLIPPING
+    InstallClipRegion( rp->Layer,oldClipRegion); // important to pass NULL if oldClipRegion is NULL.
+#endif
+    if (Render->MethodID != GM_RENDER)
       ReleaseGIRPort(rp);
   }
   return(retval);

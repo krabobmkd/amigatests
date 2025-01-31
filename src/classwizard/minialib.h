@@ -1,8 +1,8 @@
 #ifndef _MINIALIB_H_
 #define _MINIALIB_H_
 /** short inline replacement for proto/alib.h (amiga tool static lib)
- * To be used when linking .class file, because gcc6.5 linker
- * in all cases this is always short inlining, so not a bad idea I guess.
+ * To be used when linking .class file, because gcc6.5 linker may not like alib without startup.
+ * in all cases this looks more optimized, so not a bad idea I guess.
  */
 #include "asmmacros.h"
 
@@ -22,12 +22,8 @@
 // ULONG  __stdargs CoerceMethod( struct IClass *cl, Object *obj, ULONG methodID, ... );
 // ULONG  __stdargs HookEntry( struct Hook *hookPtr, Object *obj, APTR message );
 // ULONG  __stdargs SetSuperAttrs( struct IClass *cl, Object *obj, ULONG tag1, ... );
-#if 0
-ULONG DoMethodA( Object *obj, Msg message );
-ULONG DoMethod( Object *obj, ULONG methodID, ... );
-ULONG DoSuperMethodA( struct IClass *cl, Object *obj, Msg message );
-ULONG DoSuperMethod( struct IClass *cl, Object *obj, ULONG methodID, ... );
-#else
+
+// usefull:
 //https://github.com/aros-development-team/AROS/blob/master/compiler/alib/domethod.c
 /*
 ULONG  __stdargs CallHookPkt( struct Hook *hook, APTR object, APTR paramPacket );
@@ -40,7 +36,7 @@ ULONG  __stdargs CallHookPkt( struct Hook *hook, APTR object, APTR paramPacket )
 //                                     REG(APTR paramPacket,a1 ))
 //{
 //    ULONG r;
-//	move.l	a1,-(sp)
+//	move.l	a1,-(sp)    <- this is aros, I bet it's per regs on aos.
 //	move.l	a2,-(sp)
 //	move.l	a0,-(sp)
 //	move.l	(h_SubEntry,a0),a0
@@ -72,12 +68,14 @@ AINLINE ULONG DoSuperMethod( struct IClass *cl, Object *obj, ULONG methodID, ...
    return CallHookPkt((struct Hook *)cl->cl_Super, obj, (APTR)&methodID);
 }
 
-// ULONG  __stdargs SetSuperAttrs( struct IClass *cl, Object *obj, ULONG tag1, ... ) {
+AINLINE ULONG SetSuperAttrs( struct IClass *cl, Object *obj, ULONG tag1, ... ) {
+    struct opSet ops, *msg = &ops;
 
-// }
+    ops.MethodID     = OM_SET;
+    ops.ops_AttrList = ( struct TagItem	*)&tag1;
+    ops.ops_GInfo    = NULL;
 
+    return DoSuperMethodA(cl, obj, (Msg)msg);
+}
 
-
-
-#endif
 #endif

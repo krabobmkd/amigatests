@@ -91,7 +91,7 @@ Object *reaction_createLayout(int horiz,Object *childa,Object *childb,Object *ch
                 LAYOUT_Orientation, horiz,
                 LAYOUT_EvenSize, TRUE,
                 LAYOUT_HorizAlignment, LALIGN_RIGHT,
-                LAYOUT_SpaceInner, FALSE,
+               // LAYOUT_SpaceInner, FALSE,
                 LAYOUT_AddChild, childa,
                 ((childb)?LAYOUT_AddChild:TAG_DONE),childb,
                 ((childc)?LAYOUT_AddChild:TAG_DONE),childc,

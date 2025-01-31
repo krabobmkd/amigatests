@@ -53,11 +53,19 @@ ULONG F_SAVED KeyboardView_Dispatcher(
         gdata->_circleCenterY = 32767;
 
         // set gadget (super class) attributes for this instance like this:
-   //TODO
-   //re     SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
+        // (BOOL) Indicate whether gadget is part of TAB/SHIFT-TAB cycle.
+        // default to false
+        SetSuperAttrs(C,Gad, GA_TabCycle,TRUE,TAG_DONE);
 
+#ifdef USE_REGION_CLIPPING
+    gdata->_clipRegion = NewRegion();
+#endif
  //   Printf("instance:%lx\n",(int)gdata);
 //        SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
+
+        // DEVTODO:
+        // you could create instances of other objects as members...
+        // to be deleted in OM_DISPOSE of course...
 
 //        gdata->Pattern=NewObject(0,(UBYTE *)"mlr_ordered.pattern", TAG_DONE);
 //        {
@@ -89,6 +97,10 @@ ULONG F_SAVED KeyboardView_Dispatcher(
      break;
 
     case OM_DISPOSE:
+#ifdef USE_REGION_CLIPPING
+    if(gdata->_clipRegion) DisposeRegion(gdata->_clipRegion);
+     //gdata->_clipRegion = NULL;
+#endif
   //  Printf("kbd OM_DISPOSE\n");
       /*DisposeObject(gdata->Pattern);
       DisposeObject(gdata->Bevel);

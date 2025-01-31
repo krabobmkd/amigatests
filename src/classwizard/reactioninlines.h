@@ -11,7 +11,13 @@ extern "C" {
 
 //struct Window;
 
-static inline struct Window *reaction_OpenWindow(Object *owin) {
+#ifdef __SASC
+#define AINLINE static __inline
+#else
+#define AINLINE static inline
+#endif
+
+AINLINE struct Window *reaction_OpenWindow(Object *owin) {
     return  (struct Window *)DoMethod(owin, WM_OPEN, NULL);
 }
 

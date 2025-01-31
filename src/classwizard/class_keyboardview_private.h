@@ -13,7 +13,10 @@ extern "C" {
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
+#include "graphics/regions.h"
 #include "asmmacros.h"
+
+#define USE_REGION_CLIPPING 1
 
 /**
 *  this is the internal private struct that own the data of the object instances.
@@ -22,12 +25,16 @@ extern "C" {
 * DEVTODO: make this class evolve to retain the data needed to draw and interact with your widget.
 */
 typedef struct IKeyboardView {
+
     // let's say we have coordinates of the center of the circle
     UWORD _circleCenterX,_circleCenterY;
 
     ULONG _MouseMode;
     ULONG _EditMode;
 
+#ifdef USE_REGION_CLIPPING
+    struct Region *_clipRegion;
+#endif
 } KeyboardView;
 
 ULONG F_SAVED KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);

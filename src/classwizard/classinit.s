@@ -16,7 +16,7 @@
         LIST
 
         ; SASC has different include path for lvo (OS2?)
-        ; let's just inlines these values
+        ; let's just inlines the value we need here
 _LVOOpenLibrary		EQU	-552
 _LVOCloseLibrary	EQU	-414
 _LVOFindTask		EQU	-294
@@ -24,13 +24,14 @@ _LVOAlert           EQU	-108
 _LVOAllocMem	EQU	-198
 _LVOFreeMem     EQU	-210
 
-        ; these are the modern Amiga NDK path:
+        ; these are the modern Amiga NDK path, that makes cofee:
         ;    INCLUDE "lvo/exec_lib.i"
         ;    INCLUDE "lvo/dos_lib.i"
 
 	INCLUDE "intuition/classes.i"
 
- ; from modern intuition/classes.i, missing in SASC6.5
+ ; from modern intuition/classes.i, also missing in SASC6.5 includes
+ ; hey, this is OS3.0 stuff... why is it missing in SASC 1995 ?
  ifnd cl_Pad
   STRUCTURE ClassLibrary,0
     STRUCT	 cl_Lib,LIB_SIZE	; Embedded library
@@ -41,6 +42,9 @@ _LVOFreeMem     EQU	-210
 	; what is actually allocated as a opened library
 	; ClassLib -> ClassLibrary -> Library
 	; THIS MUST CORRESPOND TO C STRUCT struct ExtClassLib in class_XXXX_private.h
+	; it doesn't have to evolve more than this. XXXBase are on the C side,
+	; class definition is in C side also, so ... really let this like it is for classes/gadget/datatypes (all are boopsi).
+	; for general use library it is another story of course.
 	STRUCTURE ExtClassLib,0
 		STRUCT	cb_ClassLibrary,ClassLibrary_SIZEOF
 		ULONG	cb_SysBase
@@ -72,9 +76,9 @@ CALL	MACRO
 	jsr	_LVO\1(a6)
 	ENDM
 
-;krb says: example was using bsr to reach c funcs,
+;krb says: original example was using bsr to reach c funcs,
 ; but only jsr will make it to other sections with rellocation.
-; + sasc call extern C function @function when other compiler wants _function
+; + sasc call extern C function @function when other compilers (gcc) wants _function
 FARCALL	MACRO
 	ifd SASASM
 		jsr	@\1
@@ -118,12 +122,9 @@ RomTag:
         DC.B    VERSION                 ; UBYTE RT_VERSION
         DC.B    NT_LIBRARY              ; UBYTE RT_TYPE
         DC.B    0                       ; BYTE  RT_PRI
-        DC.L    LibName ; _KeyboardViewClassID    ; APTR  RT_NAME   libname is same as classid (myclass.class or myclass.gadget)
-        DC.L    LibId ; _KeyboardViewVersionString ; APTR  RT_IDSTRING  version string
+        DC.L    _KeyboardViewClassID    ; APTR  RT_NAME   libname is same as classid (myclass.class or myclass.gadget)
+        DC.L    _KeyboardViewVersionString ; APTR  RT_IDSTRING  version string
         DC.L    LibInitTable            ; APTR  RT_INIT
-
-LibName DC.B 'keyboardview.gadget',0
-LibId   dc.b 'someversion',0
 
         CNOP    0,4
 
@@ -133,7 +134,8 @@ LibInitTable:
         DC.L    0   ; optional datatable "initializes static data structures" exec/InitStruct "exec/initializers.i"
         DC.L    LibInit
 
-; note: apparently an historic .w relative pmointers mode are supported (starting with -1?)
+; note: apparently an historic .w relative pmointers mode are supported
+; looks like: (list of .l pointers... -1.w (list of .w relative pointers) -1.w) funnyyyyyy
 LibFuncTable:
 	DC.L	LibOpen
 	DC.L	LibClose
@@ -159,7 +161,8 @@ LibInit:
 ;        move.l #AN_BadGadget,d7
 ;        CALL Alert
 
-
+; OpenLibrary are done on the C side with createclass, because
+; C proto system will use named XXXBase anyway.
 ;        move.l  #AO_GraphicsLib,d7
 ;        lea     GfxName(pc),a1
 ;        bsr.s	OpenLib

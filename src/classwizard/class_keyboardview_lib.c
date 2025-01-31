@@ -10,6 +10,7 @@
 #include <proto/intuition.h>
 #include <proto/dos.h>
 #include <proto/utility.h>
+#include <proto/layers.h>
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 #ifdef USE_DEBUG_FILE
@@ -39,8 +40,12 @@
 
 struct ExecBase       *SysBase=NULL;
 struct GfxBase        *GfxBase=NULL;
-struct DosLibrary     *DOSBase=NULL;
 struct IntuitionBase  *IntuitionBase=NULL;
+struct Library        *LayersBase=NULL;
+
+struct DosLibrary     *DOSBase=NULL;
+
+// just used for callHooks
 struct Library        *UtilityBase=NULL;
 
 
@@ -68,11 +73,12 @@ struct Library        *UtilityBase=NULL;
 //  0
 //};
 
-
+// this is the only global writtable we should see in the whole class binary !
 struct IClass   *KeyboardViewClassPtr=NULL;
-// this one is also linked to the asm startup (in shared bin mode)
-const char *KeyboardViewClassID= KeyboardView_CLASS_ID;
-const char *KeyboardViewSuperClassID=KeyboardView_SUPERCLASS_ID;
+// this 2 strings are also linked to the asm startup header ( in .gadget mode)
+// note: (const char *str="") would make str be a (char **) to the linker. so char str[] is linkable to asm startup
+const char KeyboardViewClassID[]= KeyboardView_CLASS_ID;
+const char KeyboardViewSuperClassID[]=KeyboardView_SUPERCLASS_ID;
 const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
 
 // note: if other boopsi classes are dependenices, they need to be opened here.
@@ -88,12 +94,13 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
 #else
     BOOL KeyboardView_OpenLibs(void)
     {
-//      ULONG *LongMem=0;
-      // if(!SysBase) SysBase = *(( struct ExecBase **)4);
+      // if here, sysbase is already acquired from LibInit.
+      //NO: if(!SysBase) SysBase = *(( struct ExecBase **)4);
        if(!DOSBase)  DOSBase = (struct DosLibrary *)OpenLibrary("dos.library",1);
        if(!IntuitionBase)  IntuitionBase = (struct IntuitionBase *) OpenLibrary("intuition.library",39);
        if(!GfxBase) GfxBase = (struct GfxBase *) OpenLibrary("graphics.library",39);
        if(!UtilityBase) UtilityBase = OpenLibrary("utility.library",39);
+       if(!LayersBase) LayersBase = OpenLibrary("layers.library",39);
 #ifdef USE_DEBUG_FILE
     DebugFile =  Open("rewoot.txt",MODE_NEWFILE);
     if(DebugFile) Write(DebugFile,"ohoh",4);
@@ -107,17 +114,14 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
     if(DebugFile) Close(DebugFile);
     DebugFile = NULL;
 #endif
+        if(LayersBase) CloseLibrary(LayersBase);
         if(DOSBase) CloseLibrary((struct Library *)DOSBase);
         if(UtilityBase) CloseLibrary(UtilityBase);
         if(GfxBase) CloseLibrary((struct Library *)GfxBase);
         if(IntuitionBase) CloseLibrary((struct Library *)IntuitionBase);
     }
 
-
-
 #endif
-
-
 
 //==========================================================================================
 
@@ -139,17 +143,13 @@ int F_SAVED KeyboardView_CreateClass(REG(struct ExtClassLib *LibBase,a6))
   if(LibBase) SysBase = LibBase->cb_SysBase;
   if(KeyboardView_OpenLibs())
   {
- //  Printf("KeyboardView_OpenLibs OK\n");
     if(KeyboardViewClassPtr=MakeClass(KeyboardViewClassID,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
     {
      if(LibBase) LibBase->cl_Class = KeyboardViewClassPtr;
-//   Printf("MakeClass OK %lx\n",(int)KeyboardViewClassPtr);
-//      DKP("   A4=%8lx A6=%8lx UtilityBase:&%8lx = %8lx\n",getreg(REG_A4),getreg(REG_A6),&UtilityBase,UtilityBase);
       KeyboardViewClassPtr->cl_Dispatcher.h_Data=LibBase;
       KeyboardViewClassPtr->cl_Dispatcher.h_Entry=KeyboardView_DispatcherStub;
 
       AddClass(KeyboardViewClassPtr);
-      // also when shared .class (when static == NULL)
 
       /* Success */
       return(0);
