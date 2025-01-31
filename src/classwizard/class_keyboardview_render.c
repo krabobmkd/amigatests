@@ -231,19 +231,18 @@ ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender 
 
   gdata=INST_DATA(C, Gad);
 
-  if(Render->MethodID==GM_RENDER)
-  {
-    rp=Render->gpr_RPort;
-    update=Render->gpr_Redraw;
-  }
-  else
-  {
+//  if(Render->MethodID==GM_RENDER)
+//  {
+//    rp=Render->gpr_RPort;
+//    update=Render->gpr_Redraw;
+//  }
+//  else
+//  {
     rp = ObtainGIRPort(Render->gpr_GInfo);
-  }
+//  }
 
   if(rp)
   {
-
       WORD left   =Gad->LeftEdge;
       WORD top    =Gad->TopEdge;
       WORD width  =Gad->Width;
@@ -255,60 +254,16 @@ ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender 
                   top,
                   left + width  -1,
                   top  + height -1) ;
-
-
-
     {
         UWORD xc = left + ((width*gdata->_circleCenterX)>>16);
         UWORD yc = top + ((height*gdata->_circleCenterY)>>16);
         SetAPen(rp,2);
         DrawEllipse(rp,xc,yc,width>>1,height>>1);
-        SetAPen(rp,3);
-        DrawEllipse(rp,xc,yc,width>>2,height>>2);
+//        SetAPen(rp,3);
+//        DrawEllipse(rp,xc,yc,width>>2,height>>2);
     }
 
- //   RectFill( struct RastPort *rp, LONG xMin, LONG yMin, LONG xMax, LONG yMax );
-//    if(update == GREDRAW_UPDATE)
-//    {
-//      if(gdata->ActivePen != gdata->LastActivePen)
-//      {
-//        i_RenderColorBox(C, Gad, Render->gpr_GInfo, rp,gdata->LastActivePen);
-
-//        gdata->LastActivePen=gdata->ActivePen;
-//      }
-//      i_RenderColorBox(C, Gad, Render->gpr_GInfo, rp,gdata->ActivePen);
-//    }
-//    else
-//    {
-//      SetDrMd(rp,JAM1);
-//      SetDrPt(rp,65535);
-
-//      left   =Gad->LeftEdge;
-//      top    =Gad->TopEdge;
-//      width  =Gad->Width;
-//      height =Gad->Height;
-
-//      right =left + width  -1;
-//      bottom=top  + height -1;
-
-//      SetAPen(rp,0);
-//      SetBPen(rp,1);
-//      SetDrMd(rp,JAM2);
-
-//      DrawImage(rp,gdata->Bevel,0,0);
-///*
-//      SetAttrs(gdata->Pattern,PAT_RastPort,    rp,
-//                              PAT_DitherAmt,   gdata->ActivePen * 256,
-//                              TAG_DONE);
-//  */
-////      RectFill(rp,left,top,right,bottom);
-//      for(l=0;l<gdata->Pens;l++)
-//      {
-//        i_RenderColorBox(C, Gad, Render->gpr_GInfo,rp,l);
-//      }
-//    }
-
-    if (Render->MethodID != GM_RENDER)
+  //  if (Render->MethodID != GM_RENDER)
       ReleaseGIRPort(rp);
   }
   return(retval);

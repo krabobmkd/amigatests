@@ -53,7 +53,8 @@ ULONG F_SAVED KeyboardView_Dispatcher(
         gdata->_circleCenterY = 32767;
 
         // set gadget (super class) attributes for this instance like this:
-   //TODO     SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
+   //TODO
+   //re     SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
 
  //   Printf("instance:%lx\n",(int)gdata);
 //        SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);

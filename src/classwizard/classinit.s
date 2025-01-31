@@ -72,12 +72,21 @@ CALL	MACRO
 	jsr	_LVO\1(a6)
 	ENDM
 
+;krb says: example was using bsr to reach c funcs,
+; but only jsr will make it to other sections with rellocation.
+; + sasc call extern C function @function when other compiler wants _function
+FARCALL	MACRO
+	ifd SASASM
+		jsr	@\1
+	else
+		jsr.l _\1
+	endc
+	ENDM
+
 ;---------------------------------------------------------------------------
 	ifd SASASM
 		XREF	@KeyboardView_CreateClass
 		XREF	@KeyboardView_DestroyClass
-		;XREF	@KeyboardViewClassID
-		;XREF	@KeyboardViewVersionString
 	else
 		XREF	_KeyboardView_CreateClass
 		XREF	_KeyboardView_DestroyClass
@@ -145,7 +154,8 @@ LibInit:
 
     move.w	#VERSION,LIB_VERSION(a5)
     move.w	#REVISION,LIB_REVISION(a5)
-
+    ;test
+    clr.w	LIB_OPENCNT(a5)
 ;        move.l #AN_BadGadget,d7
 ;        CALL Alert
 
@@ -211,35 +221,20 @@ FailInit:
 ; On entry, A6 has ClassBase, task switching is disabled
 ; Returns 0 for failure, or ClassBase for success.
 LibOpen:
-	move.l a5,-(sp)
-	; - - -- -test
-	;move.l	a6,a5
-	;move.l	cb_SysBase(a6),a6
-    ;    move.l #AN_BadGadget,d7
-    ;    CALL Alert
-    ;move.l a5,a6
+
     ; - - - -  - -
 	tst.w	LIB_OPENCNT(a6)
-	bne.s	jp2
+	bne.s	jp2  ; second and following openings jump to succes case.
 
-;	bsr.l	_KeyboardView_CreateClass   sasc "asm" does not support .L for externs ??
-	ifd SASASM
-		jsr	@KeyboardView_CreateClass
-	else
-		jsr.l	_KeyboardView_CreateClass
-	endc
+	FARCALL KeyboardView_CreateClass
 	tst.l	d0
-	bne.s	jp2
-
-
-	move.l (sp)+,a5
+	beq.s	jp2  ; success is zero !!!
+	; error case
 	moveq	#0,d0
 	rts
-
 jp2
         addq.w  #1,LIB_OPENCNT(a6)
         bclr    #LIBB_DELEXP,LIB_FLAGS(a6)
-    move.l (sp)+,a5
         move.l  a6,d0
         rts
 
@@ -255,13 +250,14 @@ LibClose:
 
 	; zero openers, so try to remove class
 	;bsr.l	_KeyboardView_DestroyClass		SASC6.5 asm only support ".w externs"
-	ifd SASASM
-		;bsr.w	@KeyboardView_DestroyClass
-		jsr	@KeyboardView_DestroyClass
-	else
-		;bsr.w	_KeyboardView_DestroyClass
-		jsr.l	_KeyboardView_DestroyClass
-	endc
+	FARCALL KeyboardView_DestroyClass
+;	ifd SASASM
+;		;bsr.w	@KeyboardView_DestroyClass
+;		jsr	@KeyboardView_DestroyClass
+;	else
+;		;bsr.w	_KeyboardView_DestroyClass
+;		jsr.l	_KeyboardView_DestroyClass
+;	endc
 jp3:
 	; if delayed expunge bit set, then try to get rid of the library
 	btst	#LIBB_DELEXP,LIB_FLAGS(a6)
