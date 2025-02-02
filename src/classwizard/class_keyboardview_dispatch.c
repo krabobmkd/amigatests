@@ -1,19 +1,14 @@
 
     #include <proto/exec.h>
     #include <proto/intuition.h>
+    #include <proto/graphics.h>
     #include <proto/dos.h>
 #ifdef __SASC
     #include <clib/alib_protos.h>
-//#include "minialib.h"
-    #ifndef GM_DOMAIN
-        #define GM_DOMAIN	(7)
-    #endif
+//    #include "minialib.h"
 #else
-    #ifdef KEYBOARDVIEW_STATICLINK
-        #include <proto/alib.h>
-    #else
-        #include "minialib.h"
-    #endif
+    // GCC
+    #include "minialib.h"
 #endif
 
 //#include <proto/utility.h>
@@ -23,19 +18,25 @@
 
 #include "class_keyboardview.h"
 #include "class_keyboardview_private.h"
-#include "asmmacros.h"
 
-
-ULONG F_SAVED KeyboardView_Dispatcher(
-                    REG(Class *C,a0), // register __a0 Class *C,
-                    REG(struct Gadget *Gad,a2), // register __a2 struct Gadget *Gad,
-                    REG(Msgs M,a1), // register __a1 Msgs M,
-                    REG(struct Library *LibBase,a6) // register __a6 struct Library *LibBase
+#ifdef __SASC
+ULONG __asm __saveds KeyboardView_Dispatcher(
+                    register __a0 struct IClass *C,
+                    register __a2 struct Gadget *Gad,
+                    register __a1 union MsgUnion *M)
+#else
+// GCC
+ULONG KeyboardView_Dispatcher(
+                    Class *C  __asm("a0"),
+                    struct Gadget *Gad  __asm("a2"),
+                    Msgs M  __asm("a1")
                     )
+#endif
+
 {
   KeyboardView *gdata;
   ULONG retval=0;
-   // Printf("KeyboardView_Dispatcher %lx %lx\n",(int)C,(int)Gad);
+//    Printf("KeyboardView_Dispatcher %lx \n",(int)M->MethodID);
   gdata=INST_DATA(C, Gad);
 
 //  DKP("Dispatcher MethodID %08lx\n", M->MethodID);
@@ -46,7 +47,6 @@ ULONG F_SAVED KeyboardView_Dispatcher(
  //   Printf("kbd OM_NEW\n");
       if(Gad=(struct Gadget *)DoSuperMethodA(C,(Object *)Gad,(Msg)M))
       {
-
         gdata=INST_DATA(C, Gad);
         // DEVTODO: here you write the default values for your objects.
         gdata->_circleCenterX = 32767;
@@ -60,6 +60,7 @@ ULONG F_SAVED KeyboardView_Dispatcher(
 #ifdef USE_REGION_CLIPPING
     gdata->_clipRegion = NewRegion();
 #endif
+
  //   Printf("instance:%lx\n",(int)gdata);
 //        SetSuperAttrs(C,Gad, GA_TabCycle,1,TAG_DONE);
 
@@ -128,13 +129,11 @@ ULONG F_SAVED KeyboardView_Dispatcher(
       break;
 
     case GM_LAYOUT:
-  //  Printf("kbd GM_LAYOUT\n");
-     // retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
-      retval=1; //KeyboardView_Layout(C,Gad,(struct gpLayout *)M);
+      retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
+      if(retval) retval= KeyboardView_Layout(C,Gad,(struct gpLayout *)M);
       break;
 
     case GM_RENDER:
-  //  Printf("kbd GM_RENDER\n");
       retval=KeyboardView_Render(C,Gad,(struct gpRender *)M,0);
       break;
 

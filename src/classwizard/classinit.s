@@ -76,25 +76,13 @@ CALL	MACRO
 	jsr	_LVO\1(a6)
 	ENDM
 
-;krb says: original example was using bsr to reach c funcs,
-; but only jsr will make it to other sections with rellocation.
-; + sasc call extern C function @function when other compilers (gcc) wants _function
-FARCALL	MACRO
-	ifd SASASM
-		jsr	@\1
-	else
-		jsr.l _\1
-	endc
-	ENDM
+
 
 ;---------------------------------------------------------------------------
-	ifd SASASM
-		XREF	@KeyboardView_CreateClass
-		XREF	@KeyboardView_DestroyClass
-	else
-		XREF	_KeyboardView_CreateClass
-		XREF	_KeyboardView_DestroyClass
-	endc
+
+	XREF	_KeyboardView_CreateClass
+	XREF	_KeyboardView_DestroyClass
+
 	XREF	_KeyboardViewClassID
 	XREF	_KeyboardViewVersionString
 ;---------------------------------------------------------------------------
@@ -229,7 +217,11 @@ LibOpen:
 	tst.w	LIB_OPENCNT(a6)
 	bne.s	jp2  ; second and following openings jump to succes case.
 
-	FARCALL KeyboardView_CreateClass
+;krb says: original example was using bsr to reach c funcs,
+; but only jsr will make it to other sections with rellocation.
+; + sasc call extern C function @function when other compilers (gcc) wants _function
+	jsr	_KeyboardView_CreateClass
+
 	tst.l	d0
 	beq.s	jp2  ; success is zero !!!
 	; error case
@@ -252,15 +244,8 @@ LibClose:
 	bne.s	jp3			; if openers, don't remove class
 
 	; zero openers, so try to remove class
-	;bsr.l	_KeyboardView_DestroyClass		SASC6.5 asm only support ".w externs"
-	FARCALL KeyboardView_DestroyClass
-;	ifd SASASM
-;		;bsr.w	@KeyboardView_DestroyClass
-;		jsr	@KeyboardView_DestroyClass
-;	else
-;		;bsr.w	_KeyboardView_DestroyClass
-;		jsr.l	_KeyboardView_DestroyClass
-;	endc
+	jsr	_KeyboardView_DestroyClass
+
 jp3:
 	; if delayed expunge bit set, then try to get rid of the library
 	btst	#LIBB_DELEXP,LIB_FLAGS(a6)

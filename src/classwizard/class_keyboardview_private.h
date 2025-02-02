@@ -14,7 +14,6 @@ extern "C" {
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
 #include "graphics/regions.h"
-#include "asmmacros.h"
 
 #define USE_REGION_CLIPPING 1
 
@@ -38,15 +37,15 @@ typedef struct IKeyboardView {
 #endif
 } KeyboardView;
 
-ULONG F_SAVED KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);
-ULONG F_SAVED KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get);
-ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout);
-ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update);
-ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input);
-ULONG F_SAVED KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D);
+// ADE gcc2.5 doesn't have:
+struct gpDomain;
 
-int F_SAVED KeyboardView_LibInit(REG(struct Library *LibBase,a6));
-void F_SAVED KeyboardView_LibCleanup( REG(struct Library *LibBase,a6) );
+ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);
+ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get);
+ULONG KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout);
+ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update);
+ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input);
+ULONG KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D);
 
 // - - - - -- -
 
@@ -70,16 +69,6 @@ typedef union MsgUnion
 
 ULONG KeyboardView_Notify(Class *C, struct Gadget *Gad, Msg M, ULONG Flags);
 
-/** from classes.h, not present in SASC6.5 includes.
-*/
-#ifdef OLDINCLUDES
-struct ClassLibrary
-{
-    struct Library	 cl_Lib;	/* Embedded library */
-    UWORD		 cl_Pad;	/* Align the structure */
-    Class		*cl_Class;	/* Class pointer */
-};
-#endif
 /** this is the struct that is the extended struct Library
  * That is created with OpenLibrary().
  * But as it just manages a BOOPSI class there are just the open/close functions.
@@ -91,12 +80,7 @@ struct ClassLibrary
  */
 struct ExtClassLib
 {
-    // (see down there)   struct ClassLibrary cb_ClassLibrary;
-    // because SASC6.5 have old includes with no struct ClassLibrary
-
-    struct Library	 cl_Lib;	/* Embedded library */
-    UWORD		 cl_Pad;	/* Align the structure */
-    Class		*cl_Class;	/* Class pointer */
+    struct ClassLibrary cb_ClassLibrary;
 
     APTR  cb_SysBase; // this is passed as LibInit
     APTR  cb_SegList; // this is passed at OpenLib and needed at expunge.

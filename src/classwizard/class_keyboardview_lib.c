@@ -7,6 +7,7 @@
  #define USE_DEBUG_FILE 1
 #include <exec/alerts.h>
 #include <proto/exec.h>
+#include <proto/graphics.h>
 #include <proto/intuition.h>
 #include <proto/dos.h>
 #include <proto/utility.h>
@@ -18,68 +19,40 @@
 #endif
 #include "class_keyboardview_private.h"
 
-
+typedef ULONG (*REHOOKFUNC)();
 
 #ifdef KEYBOARDVIEW_STATICLINK
 #include <stdlib.h>
-#endif
-
-#include "asmmacros.h"
-
-
-#ifndef KEYBOARDVIEW_STATICLINK
-#ifdef __GNUC__
-
-// endif gcc6.5 header
-#endif
-
-
+#include <string.h>
 #endif
 
 #ifndef KEYBOARDVIEW_STATICLINK
-
 struct ExecBase       *SysBase=NULL;
 struct GfxBase        *GfxBase=NULL;
 struct IntuitionBase  *IntuitionBase=NULL;
 struct Library        *LayersBase=NULL;
-
 struct DosLibrary     *DOSBase=NULL;
-
-// just used for callHooks
 struct Library        *UtilityBase=NULL;
-
-
-
 #endif
 #ifdef USE_DEBUG_FILE
     BPTR DebugFile=NULL;
 #endif
-//struct LocaleBase *LocaleBase;
-
-//struct Libs MyLibs[]=
-//{
-//  (APTR *)&CyberGfxBase,  "cybergraphics.library",      39,     OLF_OPTIONAL,
-//  (APTR *)&GfxBase,       "graphics.library",           39,     0,
-//  (APTR *)&IntuitionBase, "intuition.library",          39,     0,
-//  (APTR *)&LocaleBase,    "locale.library",             39,     0,
-//  (APTR *)&UtilityBase,   "utility.library",            39,     0,
-//  (APTR *)&KeymapBase,    "keymap.library",            39,     0,
-
-
-//  (APTR *)&BevelBase,     "images/bevel.image",         44,     0,
-//  (APTR *)&LabelBase,     "images/label.image",         44,     0,
-
-//  (APTR *)&DitherRectBase,  "images/mlr_ordered.pattern",    1,     OLF_OPTIONAL,
-//  0
-//};
 
 // this is the only global writtable we should see in the whole class binary !
 struct IClass   *KeyboardViewClassPtr=NULL;
 // this 2 strings are also linked to the asm startup header ( in .gadget mode)
 // note: (const char *str="") would make str be a (char **) to the linker. so char str[] is linkable to asm startup
-const char KeyboardViewClassID[]= KeyboardView_CLASS_ID;
+#ifdef KEYBOARDVIEW_STATICLINK
+    // in class is linked static, got to create a new identifier for each execution.
+    char KeyboardView_CLASS_ID_Static[32]={0};
+#else
+const char KeyboardViewClassID[]= KeyboardView_CLASS_ID_Base;
+#endif
+
 const char KeyboardViewSuperClassID[]=KeyboardView_SUPERCLASS_ID;
 const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
+
+
 
 // note: if other boopsi classes are dependenices, they need to be opened here.
 #ifdef KEYBOARDVIEW_STATICLINK
@@ -124,36 +97,58 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
 #endif
 
 //==========================================================================================
-
-ULONG F_SAVED KeyboardView_Dispatcher(
-                    REG(Class *C,a0), // register __a0 Class *C,
-                    REG(struct Gadget *Gad,a2), // register __a2 struct Gadget *Gad,
-                    REG(Msg M,a1), // register __a1 Msgs M,
-                    REG(struct Library *LibBase,a6) // register __a6 struct Library *LibBase
+// does not need to be exact, we just want the function pointer:
+#ifdef __SASC
+extern ULONG __asm __saveds KeyboardView_Dispatcher(
+                    register __a0 struct IClass *C,
+                    register __a2 struct Gadget *Gad,
+                    register __a1 union MsgUnion *M);
+#else
+// GCC
+extern ULONG KeyboardView_Dispatcher(
+                    Class *C  __asm("a0"),
+                    struct Gadget *Gad  __asm("a2"),
+                    Msgs M  __asm("a1")
                     );
+#endif
 
-//ULONG __asm KeyboardView_DispatcherStub(register __a0 Class *Cl, register __a2 Object *Obj, register __a1 Msg M)
-ULONG F_ASM KeyboardView_DispatcherStub(REG(Class *Cl,a0),REG(Object *Obj,a2),REG(Msg M,a1))
-{
-  return(KeyboardView_Dispatcher(Cl,(struct Gadget *)Obj,M,(struct Library *)Cl->cl_Dispatcher.h_Data));
-}
+#ifdef __SASC
+extern ULONG __asm __saveds KeyboardView_Dispatcher(
+                    register __a0 struct IClass *C,
+                    register __a2 struct Gadget *Gad,
+                    register __a1 union MsgUnion *M);
+#else
+// GCC
+extern ULONG KeyboardView_Dispatcher(
+                    Class *C  __asm("a0"),
+                    struct Gadget *Gad  __asm("a2"),
+                    Msgs M  __asm("a1")
+                    );
+#endif
 
-int F_SAVED KeyboardView_CreateClass(REG(struct ExtClassLib *LibBase,a6))
+#ifdef __SASC
+int __asm KeyboardView_CreateClass(register __a6 struct ExtClassLib *LibBase )
+#else
+int KeyboardView_CreateClass(struct ExtClassLib *LibBase  __asm("a6") )
+#endif
 {
   if(LibBase) SysBase = LibBase->cb_SysBase;
   if(KeyboardView_OpenLibs())
   {
-    if(KeyboardViewClassPtr=MakeClass(KeyboardViewClassID,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
+    if(KeyboardViewClassPtr=MakeClass(KeyboardView_CLASS_ID,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
     {
-     if(LibBase) LibBase->cl_Class = KeyboardViewClassPtr;
+    //    Printf("OK\n");
+     if(LibBase) LibBase->cb_ClassLibrary.cl_Class = KeyboardViewClassPtr;
       KeyboardViewClassPtr->cl_Dispatcher.h_Data=LibBase;
-      KeyboardViewClassPtr->cl_Dispatcher.h_Entry=KeyboardView_DispatcherStub;
+      KeyboardViewClassPtr->cl_Dispatcher.h_Entry=(REHOOKFUNC)KeyboardView_Dispatcher;
 
       AddClass(KeyboardViewClassPtr);
 
+    Printf("AddClass success\n");
       /* Success */
       return(0);
     }
+         //   Printf("NOT\n");
     KeyboardView_CloseLibs();
   }
   /* Fail */
@@ -161,7 +156,11 @@ int F_SAVED KeyboardView_CreateClass(REG(struct ExtClassLib *LibBase,a6))
 }
 
 //void __saveds __asm __KeyboardViewLibCleanup(register __a6 struct Library *LibBase)
-void F_SAVED KeyboardView_DestroyClass( REG(struct ExtClassLib *LibBase,a6) )
+#ifdef __SASC
+void __asm KeyboardView_DestroyClass(register __a6 struct ExtClassLib *LibBase )
+#else
+void KeyboardView_DestroyClass(struct ExtClassLib *LibBase  __asm("a6") )
+#endif
 {
     // note LibBase and KeyboardViewClassPtr should be the same
     if(KeyboardViewClassPtr)
@@ -178,6 +177,19 @@ void F_SAVED KeyboardView_DestroyClass( REG(struct ExtClassLib *LibBase,a6) )
 //====================================================================================
 
 #ifdef KEYBOARDVIEW_STATICLINK
+// we can't use a public name for a class when static,
+// because boopsi class are public to the whole systems.
+// tag the task Id and pointer to it.
+void createStaticClassId()
+{
+    // when static, std runtime is allowed.
+    struct Task *ptask;
+   ptask = FindTask(NULL);
+   KeyboardView_CLASS_ID_Static[0]=0;
+   sprintf(&KeyboardView_CLASS_ID_Static[0],"%s%08x",KeyboardView_CLASS_ID_Base,(int)ptask);
+   // Printf("%s\n",KeyboardView_CLASS_ID_Static);
+}
+
 void KeyboardView_static_class_close()
 {
     if(KeyboardViewClassPtr)
@@ -188,7 +200,9 @@ void KeyboardView_static_class_close()
 // just use this one once
 void KeyboardView_static_class_init()
 {
+    Printf("KeyboardView_static_class_init\n");
     atexit(KeyboardView_static_class_close);
+    createStaticClassId();
     KeyboardView_CreateClass(NULL);
 
 }

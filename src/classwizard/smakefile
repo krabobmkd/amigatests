@@ -1,15 +1,18 @@
-# this is the "smakefile" for Amiga SASC6
+# this is the "smakefile" for Amiga SASC6.5
 # CFLAGS  = data=far nominc streq nostkchk
-#  data=near
-SCOPTS = UNSCHAR STRMERGE NOSTKCHK PARMS=REGISTER data=far OPTIMIZE CPU=68000 DEFINE=OLDINCLUDES=1	
+#  data=near DEFINE=OLDINCLUDES=1
+# SCOPTS = UNSCHAR STRMERGE NOSTKCHK PARMS=REGISTER data=far OPTIMIZE CPU=68000
+SCOPTS = OPTIMIZE CPU=68000 NOSTKCHK STRMERGE UNSCHAR data=far PARMS=REGISTER
+SCOPTSS = $(SCOPTS) DEFINE=KEYBOARDVIEW_STATICLINK=1
 LIBS = LIB:sc.lib
-# LIB:cgraphx.lib LIB:sc.lib IB:amiga.lib
+
 SLO    = SC SD ND
 BUILDDIR = build-sasc
 AFLAGS = -dSASASM=1
 
-BINARIES = keyboardview.gadget keyboardviewTest
-# keyboardviewTest keyboardviewTest_static
+BINARIES = $(BUILDDIR)/keyboardview.gadget $(BUILDDIR)/keyboardviewTest $(BUILDDIR)Static/keyboardviewTest_static
+
+HEADERS = class_keyboardview.h class_keyboardview_private.h  minialib.h
 
 GADGETOBJS = \
  $(BUILDDIR)/classinit.s.o \
@@ -19,46 +22,82 @@ GADGETOBJS = \
  $(BUILDDIR)/class_keyboardview_render.c.o \
  $(BUILDDIR)/class_keyboardview_handleinput.c.o
 
+GADGETOBJSSTATIC = \
+ $(BUILDDIR)Static/class_keyboardview_lib.c.o \
+ $(BUILDDIR)Static/class_keyboardview_dispatch.c.o \
+ $(BUILDDIR)Static/class_keyboardview_attribs.c.o \
+ $(BUILDDIR)Static/class_keyboardview_render.c.o \
+ $(BUILDDIR)Static/class_keyboardview_handleinput.c.o
+
 all: $(BINARIES)
 
-$(BUILDDIR)/classinit.s.o: classinit.s $(BUILDDIR)
-	asm -o$@ $(AFLAGS) classinit.s 
-
-$(BUILDDIR)/class_keyboardview_lib.c.o: class_keyboardview_lib.c $(BUILDDIR)
-	sc class_keyboardview_lib.c $(SCOPTS) OBJNAME=$@
-
-$(BUILDDIR)/class_keyboardview_dispatch.c.o: class_keyboardview_dispatch.c $(BUILDDIR)
-	sc class_keyboardview_dispatch.c $(SCOPTS) OBJNAME=$@
-
-$(BUILDDIR)/class_keyboardview_attribs.c.o: class_keyboardview_attribs.c $(BUILDDIR)
-	sc class_keyboardview_attribs.c $(SCOPTS) OBJNAME=$@
-
-$(BUILDDIR)/class_keyboardview_render.c.o: class_keyboardview_render.c $(BUILDDIR)
-	sc class_keyboardview_render.c $(SCOPTS) OBJNAME=$@
-
-$(BUILDDIR)/class_keyboardview_handleinput.c.o: class_keyboardview_handleinput.c $(BUILDDIR)
-	sc class_keyboardview_handleinput.c $(SCOPTS) OBJNAME=$@
+# - - - - - - - - -
 
 $(BUILDDIR):
 	-makedir $(BUILDDIR)
 
-keyboardview.gadget: $(GADGETOBJS)
-	slink $(GADGETOBJS) lib $(LIBS) to $@ 
+$(BUILDDIR)Static:
+	-makedir $(BUILDDIR)Static
 
-# - - - - - - - - - - - -
-$(BUILDDIR)/keyboardviewtest.c.o: keyboardviewtest.c $(BUILDDIR)
+# - - - - - - - - - Objects for .gadget
+
+$(BUILDDIR)/classinit.s.o: classinit.s $(BUILDDIR)
+	asm -o$@ $(AFLAGS) classinit.s 
+
+$(BUILDDIR)/class_keyboardview_lib.c.o: class_keyboardview_lib.c $(BUILDDIR) $(HEADERS)
+	sc class_keyboardview_lib.c $(SCOPTS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)/class_keyboardview_dispatch.c.o: class_keyboardview_dispatch.c $(BUILDDIR) $(HEADERS)
+	sc class_keyboardview_dispatch.c $(SCOPTS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)/class_keyboardview_attribs.c.o: class_keyboardview_attribs.c $(BUILDDIR) $(HEADERS)
+	sc class_keyboardview_attribs.c $(SCOPTS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)/class_keyboardview_render.c.o: class_keyboardview_render.c $(BUILDDIR) $(HEADERS)
+	sc class_keyboardview_render.c $(SCOPTS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)/class_keyboardview_handleinput.c.o: class_keyboardview_handleinput.c $(BUILDDIR) $(HEADERS)
+	sc class_keyboardview_handleinput.c $(SCOPTS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)/keyboardview.gadget: $(GADGETOBJS)
+	slink $(GADGETOBJS) lib lib:sc.lib to $@
+# lib lib:amiga.lib
+# lib $(LIBS)  $(SLO)
+
+# - - - - - - - - - Objects for gadget test case executable
+
+$(BUILDDIR)/keyboardviewtest.c.o: keyboardviewtest.c $(BUILDDIR) $(HEADERS)
 	sc keyboardviewtest.c $(SCOPTS) OBJNAME=$@
 
-keyboardviewTest: $(BUILDDIR)/keyboardviewtest.c.o
-	slink FROM LIB:c.o keyboardviewtest.c.o lib $(LIBS) to $@
+$(BUILDDIR)/keyboardviewTest: $(BUILDDIR)/keyboardviewtest.c.o
+	slink FROM LIB:c.o $(BUILDDIR)/keyboardviewtest.c.o lib $(LIBS) to $@
 
-# - - - - - - - - - - - -
+# - - - - - - - - - Objects for static test case executable
 
+# it compiles all gadget & test case objects this times with word XXX_STATICLINK
+
+$(BUILDDIR)Static/class_keyboardview_lib.c.o: class_keyboardview_lib.c $(BUILDDIR)Static $(HEADERS)
+	sc class_keyboardview_lib.c $(SCOPTSS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)Static/class_keyboardview_dispatch.c.o: class_keyboardview_dispatch.c $(BUILDDIR)Static $(HEADERS)
+	sc class_keyboardview_dispatch.c $(SCOPTSS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)Static/class_keyboardview_attribs.c.o: class_keyboardview_attribs.c $(BUILDDIR)Static $(HEADERS)
+	sc class_keyboardview_attribs.c $(SCOPTSS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)Static/class_keyboardview_render.c.o: class_keyboardview_render.c $(BUILDDIR)Static $(HEADERS)
+	sc class_keyboardview_render.c $(SCOPTSS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)Static/class_keyboardview_handleinput.c.o: class_keyboardview_handleinput.c $(BUILDDIR)Static $(HEADERS)
+	sc class_keyboardview_handleinput.c $(SCOPTSS) NOSTARTUP OBJNAME=$@
+
+$(BUILDDIR)Static/keyboardviewtest.c.o: keyboardviewtest.c $(BUILDDIR)Static $(HEADERS)
+	sc keyboardviewtest.c $(SCOPTSS) OBJNAME=$@
+
+$(BUILDDIR)Static/keyboardviewTest_static: $(BUILDDIR)Static $(BUILDDIR)Static/keyboardviewtest.c.o $(GADGETOBJSSTATIC)
+	slink FROM LIB:c.o $(BUILDDIR)Static/keyboardviewtest.c.o $(GADGETOBJSSTATIC) lib $(LIBS) to $@
+
+# - - - - - - -
 clean:
 	-delete ALL FORCE $(BUILDDIR)
-	-delete $(BINARIES) \#?.(info|o) QUIET
-	-delete \#?.(o|lnk)
-
-
-#	slink FROM LIB:c.o $*.o $(SLO) LIB $(LIBS) TO $@
-
+	-delete ALL FORCE $(BUILDDIR)Static

@@ -4,7 +4,6 @@
  * To be used when linking .class file, because gcc6.5 linker may not like alib without startup.
  * in all cases this looks more optimized, so not a bad idea I guess.
  */
-#include "asmmacros.h"
 
 #include <proto/utility.h>
 #include <intuition/classes.h>
@@ -45,7 +44,7 @@ ULONG  __stdargs CallHookPkt( struct Hook *hook, APTR object, APTR paramPacket )
 //	return r;
 //}
 #ifdef __SASC
-#define AINLINE __inline
+#define AINLINE static __inline
 #else
 #define AINLINE static inline
 #endif

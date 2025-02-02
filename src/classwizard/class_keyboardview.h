@@ -3,9 +3,6 @@
 /**
  * This is the file that can be released
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <exec/types.h>
 #include <intuition/classes.h>
@@ -14,15 +11,17 @@ extern "C" {
 #define VERSION_KEYBOARDVIEW 1
 
 #define KeyboardView_SUPERCLASS_ID "gadgetclass"
-#define KeyboardView_CLASS_ID      "keyboardview.gadget"
+#define KeyboardView_CLASS_ID_Base "keyboardview.gadget"
+
+// KeyboardView_CLASS_ID is the identifier for this class.
 
 #ifdef KEYBOARDVIEW_STATICLINK
-// just use this one once to init class, will use a atexit() to close
-void KeyboardView_static_class_init();
-#endif
-
-#ifdef __cplusplus
-}
+    // just use this one once to init class, will use a atexit() to close
+    extern char KeyboardView_CLASS_ID_Static[];
+    #define KeyboardView_CLASS_ID     KeyboardView_CLASS_ID_Static
+    extern void KeyboardView_static_class_init(void);
+#else
+    #define KeyboardView_CLASS_ID KeyboardView_CLASS_ID_Base
 #endif
 
 #endif

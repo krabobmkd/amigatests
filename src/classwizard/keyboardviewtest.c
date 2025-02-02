@@ -8,6 +8,11 @@
  * when this is not defined, which "is the way".
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+
 #include <clib/alib_protos.h>
 #include <clib/reaction_lib_protos.h>
 
@@ -16,8 +21,10 @@
 #include <proto/diskfont.h>
 #include <proto/exec.h>
 #include <proto/graphics.h>
-//#include <proto/icon.h>
 #include <proto/intuition.h>
+#include <proto/layers.h>
+#include <proto/dos.h>
+#include <proto/icon.h>
 #include <exec/alerts.h>
 //#include <proto/utility.h>
 
@@ -41,12 +48,16 @@
 // and are not GCC compatible anyway.
 #include "reactioninlines.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 
+// DOSBase is managed by C startup...
+// struct DosLibrary *DOSBase=NULL;
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
+struct Library *UtilityBase=NULL; // inlined DoMethod() may use CallHooksKpt().
+struct Library *LayersBase=NULL; // only used by gadgets drawing in static link mode.
+
+// used by reaction for appicon things
+struct Library *IconBase=NULL;
 
 // boopsi classes bases:
 struct Library *WindowBase=NULL;
@@ -113,11 +124,26 @@ int main(int argc, char **argv)
     app = AllocVec(sizeof(struct App),MEMF_CLEAR);
     if(!app) return 1;
 
+    // - - - - open libraries...
+
     if ( ! (IntuitionBase = (struct IntuitionBase*)OpenLibrary("intuition.library",33)))
         cleanexit("Can't open intuition.library");
 
     if ( ! (GfxBase = (struct GfxBase *)OpenLibrary("graphics.library",39)))
         cleanexit("Can't open graphics.library");
+
+    if ( ! (UtilityBase = OpenLibrary("utility.library",39)))
+        cleanexit("Can't open utility.library");
+
+    if ( ! (LayersBase = OpenLibrary("layers.library",39)))
+        cleanexit("Can't open layers.library");
+
+    if ( ! (IconBase = OpenLibrary("icon.library",39)))
+        cleanexit("Can't open icon.library");
+
+    // note: DOSBase is opened by C startup.
+
+    // - - - - open boopsi classes...
 
     if ( ! (WindowBase = OpenLibrary("window.class",44)))
         cleanexit("Can't open window.class");
@@ -356,6 +382,10 @@ void exitclose(void)
 
     if(GfxBase) CloseLibrary((struct Library*)GfxBase);
     if(IntuitionBase) CloseLibrary((struct Library*)IntuitionBase);
+    if(LayersBase) CloseLibrary(LayersBase);
+    if (UtilityBase) CloseLibrary(UtilityBase);
 
+    //if(DOSBase) CloseLibrary((struct Library*)DOSBase);
+    if(IconBase) CloseLibrary(IconBase);
 }
 

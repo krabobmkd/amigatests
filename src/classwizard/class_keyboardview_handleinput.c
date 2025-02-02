@@ -3,13 +3,11 @@
 #include <proto/intuition.h>
 
 #ifdef __SASC
+//    #include "minialib.h"
     #include <clib/alib_protos.h>
 #else
-    #ifdef KEYBOARDVIEW_STATICLINK
-        #include <proto/alib.h>
-    #else
-        #include "minialib.h"
-    #endif
+    // GCC
+    #include "minialib.h"
 #endif
 
 #include <intuition/classes.h>
@@ -19,11 +17,9 @@
 #include "class_keyboardview.h"
 #include "class_keyboardview_private.h"
 
-#include "asmmacros.h"
-
 #include <utility/tagitem.h>
 
-ULONG F_SAVED KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...);
+ULONG KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...);
 
 ULONG KeyboardView_Notify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags)
 {
@@ -59,7 +55,7 @@ ULONG KeyboardView_NotifyUndo(Class *C, struct Gadget *Gad, Msg M, ULONG Flags)
 */
 
 
-ULONG F_SAVED KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...)
+ULONG KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...)
 {
   ULONG res;
   KeyboardView *gdata;
@@ -83,7 +79,7 @@ ULONG F_SAVED KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M,
 
 #define MRK_BUFFER_SIZE 3
 
-ULONG F_SAVED KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
+ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
 {
   ULONG retval=GMR_MEACTIVE; //default
   char buffer[MRK_BUFFER_SIZE];

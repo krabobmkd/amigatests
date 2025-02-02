@@ -6,13 +6,11 @@
 #include <proto/layers.h>
 
 #ifdef __SASC
+//    #include "minialib.h"
     #include <clib/alib_protos.h>
 #else
-    #ifdef KEYBOARDVIEW_STATICLINK
-        #include <proto/alib.h>
-    #else
-        #include "minialib.h"
-    #endif
+    // GCC
+    #include "minialib.h"
 #endif
 
 #include <intuition/classes.h>
@@ -22,33 +20,7 @@
 #include "class_keyboardview.h"
 #include "class_keyboardview_private.h"
 
-#include "asmmacros.h"
-
 #include <utility/tagitem.h>
-
-// SASC6.5 include corrections...
-#ifndef GDOMAIN_MINIMUM
-    #define	GDOMAIN_MINIMUM		(0)
-#endif
-#ifndef GDOMAIN_NOMINAL
-    #define	GDOMAIN_NOMINAL		(1)
-#endif
-#ifndef GDOMAIN_MAXIMUM
-    #define	GDOMAIN_MAXIMUM		(2)
-#endif
-#ifdef __SASC
-struct gpDomain
-{
-    ULONG		 MethodID;
-    struct GadgetInfo	*gpd_GInfo;
-    struct RastPort	*gpd_RPort;	/* RastPort to layout for */
-    LONG		 gpd_Which;
-    struct IBox		 gpd_Domain;	/* Resulting domain */
-    struct TagItem	*gpd_Attrs;	/* Additional attributes */
-};
-#endif
-
-
 
 /* The GM_DOMAIN method is used to obtain the sizing requirements of an
  * object for a class before ever creating an object. */
@@ -64,7 +36,7 @@ struct gpDomain
 //    struct TagItem	*gpd_Attrs;	/* Additional attributes */
 //};
 
-ULONG F_SAVED KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
+ULONG KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
 {
   KeyboardView *gdata=0;
 
@@ -118,7 +90,7 @@ ULONG F_SAVED KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain 
 /**
  * When we have to resize what's inside.
  */
-ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
+ULONG KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
 {
   KeyboardView *gdata;
   LONG rows,cols,l,topedge,leftedge,width,height;
@@ -227,7 +199,7 @@ ULONG F_SAVED KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout 
 
 
 /* draw yourself, in the appropriate state */
-ULONG F_SAVED KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update)
+ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update)
 {
   KeyboardView *gdata;
   struct RastPort *rp;

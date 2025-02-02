@@ -7,11 +7,8 @@
 //    #include "minialib.h"
     #include <clib/alib_protos.h>
 #else
-    #ifdef KEYBOARDVIEW_STATICLINK
-        #include <proto/alib.h>
-    #else
-        #include "minialib.h"
-    #endif
+    // GCC
+    #include "minialib.h"
 #endif
 
 #include <intuition/classes.h>
@@ -21,12 +18,10 @@
 #include "class_keyboardview.h"
 #include "class_keyboardview_private.h"
 
-#include "asmmacros.h"
-
 #include <utility/tagitem.h>
 
 
-ULONG F_SAVED KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
+ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
 {
   ULONG retval=1;
   KeyboardView *gdata;
@@ -129,7 +124,7 @@ ULONG F_SAVED KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *G
 
 ULONG Redraw[]={0, GREDRAW_UPDATE, GREDRAW_REDRAW};
 
-ULONG F_SAVED KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
+ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
 {
   struct TagItem *tag;
   ULONG retval=0,data;
