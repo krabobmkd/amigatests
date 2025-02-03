@@ -16,6 +16,7 @@
 #include <clib/alib_protos.h>
 #include <clib/reaction_lib_protos.h>
 
+#include <intuition/screens.h>
 #include <intuition/icclass.h>
 //#include <libraries/gadtools.h>
 #include <proto/diskfont.h>
@@ -40,6 +41,8 @@
 #include <proto/button.h>
 #include <gadgets/button.h>
 
+#include <proto/label.h>
+#include <images/label.h>
 // this is the public definition of the class we test:
 #include "class_keyboardview.h"
 
@@ -64,11 +67,23 @@ struct Library *WindowBase=NULL;
 struct Library *LayoutBase=NULL;
 struct Library *BitMapBase=NULL;
 struct Library *ButtonBase=NULL;
+struct Library *LabelBase=NULL;
 struct Library *CheckBoxBase=NULL;
 
 #ifndef KEYBOARDVIEW_STATICLINK
 struct Library *KeyBoardViewBase=NULL;
 #endif
+
+/* Gadget action IDs, just to demonstrate some interactions
+ */
+#define GAD_RECENTER 1
+//#define GAD_FORWARD 2
+//#define GAD_QUIT 3
+//#define GAD_GETFILE 4
+//#define GAD_GETFONT 5
+//#define GAD_GETSCREEN 6
+
+
 
 //struct TextAttr helvetica15bu = { (STRPTR)"helvetica.font", 15, FSF_UNDERLINED | FSF_BOLD, FPF_DISKFONT };
 //struct TextAttr garnet16 = { (STRPTR)"garnet.font", 16, 0, FPF_DISKFONT };
@@ -83,14 +98,17 @@ struct App
     struct MsgPort *app_port;
 
     struct Screen *lockedscreen;
+    struct DrawInfo *drawInfo;
+    ULONG   fontHeight;
 
     Object *mainlayout;
-        Object *keyboardlayout;
-        Object *llpadslayout;
+        Object *horizontallayout;
+            Object *testbt;
+            Object *kbdview;
         Object *bottombarlayout;
+            Object *label1;
+            Object *label2;
 
-        Object *testbt;
-        Object *kbdview;
 };
 
 struct App *app=NULL;
@@ -157,6 +175,9 @@ int main(int argc, char **argv)
     if ( ! (ButtonBase = OpenLibrary("gadgets/button.gadget",44)))
         cleanexit("Can't open button.gadget");
 
+    if ( ! (LabelBase = OpenLibrary("images/label.image",44)))
+        cleanexit("Can't open label.image");
+
 #ifdef KEYBOARDVIEW_STATICLINK
     KeyboardView_static_class_init();
 #else
@@ -165,6 +186,7 @@ int main(int argc, char **argv)
                 ,VERSION_KEYBOARDVIEW)))
         cleanexit("Can't open keyboardview.gadget");
 #endif
+
 
 //    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
 //        cleanexit("Can't open checkbox.gadget");
@@ -175,12 +197,41 @@ int main(int argc, char **argv)
     app->lockedscreen = LockPubScreen(NULL);
     if (!app->lockedscreen) cleanexit("Can't lock screen");
 
+    app->drawInfo = GetScreenDrawInfo(app->lockedscreen);
+    // let's size according to font height.
+    app->fontHeight = 8+4; // default;
+    if(app->drawInfo && app->drawInfo->dri_Font) app->fontHeight =app->drawInfo->dri_Font->tf_YSize + 4;
+
     app->testbt = NewObject( NULL, "button.gadget",
                               //      GA_TextAttr, &garnet16,
-                                    GA_Text, "B_ig Button",
+                                    GA_ID,GAD_RECENTER,
+                                    GA_Text, "R_ecenter",
                                     GA_RelVerify, TRUE, // needed
                                 TAG_END);
+/*
+                LAYOUT_AddChild, back_gad = NewObject( NULL, "button.gadget",
+                    GA_ID, GAD_BACK,
+                    GA_Text, "< _Back",
+                    GA_RelVerify, TRUE,
+                    GA_Disabled, TRUE,
+                TAG_END),
+*/
+
     if(!app->testbt) cleanexit("Can't button");
+
+
+ app->label1 = NewObject( LABEL_GetClass(), NULL,
+                                LABEL_DrawInfo, app->drawInfo,
+                              //  IA_Font, &helvetica15bu,
+                                LABEL_Justification, LABEL_CENTRE,
+                                LABEL_Text,(ULONG)"Label 1",
+                            TAG_END);
+ app->label2 = NewObject( LABEL_GetClass(), NULL,
+                                LABEL_DrawInfo, app->drawInfo,
+                           //     IA_Font, &helvetica15bu,
+                                LABEL_Justification, LABEL_CENTRE,
+                                LABEL_Text,(ULONG) "Label 2",
+                            TAG_END);
 
     app->kbdview = NewObject( NULL, KeyboardView_CLASS_ID,
                               //      GA_TextAttr, &garnet16,
@@ -190,21 +241,37 @@ int main(int argc, char **argv)
     if(!app->kbdview) cleanexit("Can't kbdview");
 
 
-    app->keyboardlayout = reaction_createLayout(LAYOUT_ORIENT_HORIZ,
+    app->horizontallayout = reaction_createLayout(LAYOUT_ORIENT_HORIZ,
                     app->testbt,
                     app->kbdview,NULL,NULL);
-    if(!app->keyboardlayout) cleanexit("Can't layout");
+    if(!app->horizontallayout) cleanexit("Can't layout");
+
+    app->bottombarlayout =
+         NewObject( LAYOUT_GetClass(), NULL,
+                LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
+                LAYOUT_EvenSize, TRUE,
+                LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                CHILD_MaxHeight,app->fontHeight,
+               // LAYOUT_SpaceInner, FALSE,
+                LAYOUT_AddChild, app->label1,
+                LAYOUT_AddChild, app->label2,
+                TAG_DONE);
+
+    if(!app->bottombarlayout) cleanexit("Can't layout");
+
+
 
     {
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);
         app->mainlayout = NewObject( LAYOUT_GetClass(), NULL,
-     //       GA_DrawInfo, drinfo,
+            GA_DrawInfo, app->drawInfo,
             LAYOUT_DeferLayout, TRUE, /* Layout refreshes done on task's context (by thewindow class) */
             LAYOUT_SpaceOuter, TRUE,
             LAYOUT_BottomSpacing, 4,
             LAYOUT_HorizAlignment, LALIGN_RIGHT,
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
-            LAYOUT_AddChild, app->keyboardlayout,
+            LAYOUT_AddChild, app->horizontallayout,
+            LAYOUT_AddChild, app->bottombarlayout,
             TAG_END);
         if (!app->mainlayout) cleanexit("layout class error");
     } //end if screen
@@ -217,7 +284,7 @@ int main(int argc, char **argv)
         WA_Left, 0,
         WA_Top, app->lockedscreen->Font->ta_YSize + 3,
         WA_CustomScreen, app->lockedscreen,
-        WA_IDCMP, IDCMP_CLOSEWINDOW,
+        WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY,
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
         WA_Title, "Inputs Checkup",
         WINDOW_ParentGroup, app->mainlayout,
@@ -228,6 +295,8 @@ int main(int argc, char **argv)
     TAG_END);
     if(!app->window_obj) cleanexit("can't create window");
 
+
+// https://wiki.amigaos.net/wiki/BOOPSI_-_Object_Oriented_Intuition
 
     /*  Open the window. */
     app->win = reaction_OpenWindow(app->window_obj);
@@ -254,16 +323,31 @@ int main(int argc, char **argv)
              */
             while ((result = DoMethod(app->window_obj, WM_HANDLEINPUT, /*code*/NULL)) != WMHI_LASTMSG)
             {
-
                 switch(result & WMHI_CLASSMASK)
                 {
+                    case WMHI_RAWKEY:
+                        // quit on "esc down" key.
+                        if((result & WMHI_KEYMASK) == 0x45) ok = FALSE;
+                        break;
                     case WMHI_CLOSEWINDOW:
+                        // quit on window close gadget
                         ok = FALSE;
                         break;
 
                     case WMHI_GADGETUP:
- /*                       switch (result & WMHI_GADGETMASK)
+                        switch (result & WMHI_GADGETMASK)
                         {
+                            case GAD_RECENTER:
+                                // does the button action.
+                                // change attributes of the gadget we created:
+                                // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
+                                SetGadgetAttrs(app->kbdview,app->win,NULL,
+                                    KEYBOARDVIEW_CenterX, 32768,
+                                    KEYBOARDVIEW_CenterY, 32768,
+                                    TAG_DONE);
+                            break;
+
+                        /*
                             case GAD_FORWARD:
                                 GetAttr(PAGE_Current, page, &current_page);
                                 if (current_page < NUM_PAGES)
@@ -317,10 +401,10 @@ int main(int argc, char **argv)
                             case GAD_QUIT:
                                 ok = FALSE;
                                 break;
-
+*/
                             default:
                                 break;
-                        }*/
+                        }
                         break;
 
                     case WMHI_ICONIFY:
@@ -361,10 +445,20 @@ void exitclose(void)
             // but if not attached because mid-init fail, has to be manual.
             if(app->mainlayout)  DisposeObject(app->mainlayout);
             else {
-                if(app->testbt) DisposeObject(app->testbt);
-                if(app->kbdview) DisposeObject(app->kbdview);
+                if(app->horizontallayout) DisposeObject(app->horizontallayout);
+                else {
+                    if(app->testbt) DisposeObject(app->testbt);
+                    if(app->kbdview) DisposeObject(app->kbdview);
+                }
+                if(app->bottombarlayout) DisposeObject(app->bottombarlayout);
+                else {
+                    if(app->label1) DisposeObject(app->label1);
+                    if(app->label2) DisposeObject(app->label2);
+                }
             }
         }
+
+        if(app->drawInfo) FreeScreenDrawInfo(app->lockedscreen, app->drawInfo);
         if(app->lockedscreen) UnlockPubScreen(0, app->lockedscreen);
 
         FreeVec(app);
@@ -375,6 +469,7 @@ void exitclose(void)
     if(KeyBoardViewBase) CloseLibrary(KeyBoardViewBase);
 #endif
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
+    if(LabelBase) CloseLibrary(LabelBase);
     if(ButtonBase) CloseLibrary(ButtonBase);
     if(BitMapBase) CloseLibrary(BitMapBase);
     if(LayoutBase) CloseLibrary(LayoutBase);

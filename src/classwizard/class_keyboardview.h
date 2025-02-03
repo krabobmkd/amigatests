@@ -1,10 +1,13 @@
-#ifndef _CLASS_KEYBOARDVIEW_H_
-#define _CLASS_KEYBOARDVIEW_H_
+#ifndef GADGETS_KEYBOARDVIEW_H
+#define GADGETS_KEYBOARDVIEW_H
 /**
- * This is the file that can be released
+ * Definitions for Gadget KeyboardView
+ * (This is the file that can be released)
  */
-
 #include <exec/types.h>
+#include <reaction/reaction.h>
+#include <intuition/gadgetclass.h>
+//#include <images/bevel.h>
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 
@@ -24,4 +27,18 @@
     #define KeyboardView_CLASS_ID KeyboardView_CLASS_ID_Base
 #endif
 
+/* Additional attributes defined by the gadget class.
+ * We should also manages some attributes defined for super class gadget,
+ * like GA_Disabled.
+ */
+
+#define KEYBOARDVIEW_Dummy			(TAG_USER+0x04000000)
+
+#define	KEYBOARDVIEW_CenterX		(KEYBOARDVIEW_Dummy+1)
+
+#define	KEYBOARDVIEW_CenterY		(KEYBOARDVIEW_Dummy+2)
+
+/** DEVTODO: adds attributes definitions here and
+ * manage them in class_keyboardview_attribs.c
+ */
 #endif

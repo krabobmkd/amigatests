@@ -19,20 +19,30 @@
 #include "class_keyboardview.h"
 #include "class_keyboardview_private.h"
 
+/** WATCH OUT ! boopsi docs says:
+*  "the rkmmodelclass dispatcher must be able to run on Intuition's context,
+*  which puts some limitations on what the dispatcher is permitted to do:
+*  it can't use dos.library, it can't wait on application signals or message ports
+* and it can't call any Intuition functions which might wait on Intuition."
+*/
+
 #ifdef __SASC
 ULONG __asm __saveds KeyboardView_Dispatcher(
                     register __a0 struct IClass *C,
                     register __a2 struct Gadget *Gad,
                     register __a1 union MsgUnion *M)
 #else
+#ifdef __GNUC__
 // GCC
 ULONG KeyboardView_Dispatcher(
                     Class *C  __asm("a0"),
                     struct Gadget *Gad  __asm("a2"),
                     Msgs M  __asm("a1")
                     )
+#else
+ need SASC or GCC
 #endif
-
+#endif
 {
   KeyboardView *gdata;
   ULONG retval=0;

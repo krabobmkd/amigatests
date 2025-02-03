@@ -27,7 +27,15 @@ typedef struct IKeyboardView {
 
     // let's say we have coordinates of the center of the circle
     UWORD _circleCenterX,_circleCenterY;
+    // this is a super class (gadget) state managed by
+    // GA_Disabled, GA_Highlight, GA_Selected
+    // default is zero (false)
+    UBYTE   _disabled;
+    UBYTE   _highlighted;
+    UBYTE   _selected;
+    UBYTE   _align;
 
+    // todo: we could manage the mouse interaction current state....
     ULONG _MouseMode;
     ULONG _EditMode;
 

@@ -29,91 +29,28 @@ ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
 
   gdata=INST_DATA(C, Gad);
 
-//  DKP("SetAttrs()\n");
-
   data=Get->opg_Storage;
 
   switch(Get->opg_AttrID)
   {
-  /*
-    case TCPALETTE_SelectedColor:
-      *data=(ULONG)gdata->ActivePen;
-      break;
-
-    case TCPALETTE_RGBPalette:
-      {
-        ULONG l;
-        struct TCPaletteRGB *rgb;
-
-        rgb=(APTR)data;
-
-        for(l=0;l<gdata->Pens;l++)
-        {
-          rgb[l]=gdata->Palette[l];
-        }
-      }
-      break;
-
-     case TCPALETTE_LRGBPalette:
-      {
-        ULONG l;
-
-        for(l=0;l<gdata->Pens;l++)
-        {
-          data[l]=PACKRGB(gdata->Palette[l]);
-        }
-      }
-      break;
-
-    case TCPALETTE_SelectedRGB:
-      {
-        struct TCPaletteRGB *rgb;
-
-        rgb=(APTR)data;
-
-        *rgb=gdata->Palette[gdata->ActivePen];
-      }
-      break;
-
-    case TCPALETTE_SelectedLRGB:
-      {
-        data[0]=PACKRGB(gdata->Palette[gdata->ActivePen]);
-      }
-      break;
-
-     case TCPALETTE_NumColors:
-      *data=gdata->Pens;
-      break;
-
-    case TCPALETTE_ShowSelected:
-      *data=gdata->ShowSelected;
-      break;
-
-    case TCPALETTE_SelectedRed:
-      *data=gdata->Palette[gdata->ActivePen].R>>(32-gdata->Precision);
-      break;
-
-    case TCPALETTE_SelectedGreen:
-      *data=gdata->Palette[gdata->ActivePen].G>>(32-gdata->Precision);
-      break;
-
-    case TCPALETTE_SelectedBlue:
-      *data=gdata->Palette[gdata->ActivePen].B>>(32-gdata->Precision);
-      break;
-
-    case TCPALETTE_Precision:
-      *data=gdata->Precision;
-      break;
-
-    case TCPALETTE_Orientation:
-      *data=gdata->Orientation;
-      break;
-
-    case TCPALETTE_NoUndo:
-      *data=(gdata->UndoLength?0:1); // returns 0 if there is undo
-      break;
-*/
+    case KEYBOARDVIEW_CenterX:
+        *data = (LONG)gdata->_circleCenterX;
+    break;
+    case KEYBOARDVIEW_CenterY:
+        *data = (LONG)gdata->_circleCenterY;
+    break;
+    // super class gadget things
+    case GA_Disabled:
+        *data = (LONG)gdata->_disabled;
+    break;
+    case GA_Highlight:
+        *data = (LONG)gdata->_highlighted;
+    break;
+    case GA_Selected:
+        *data = (LONG)gdata->_selected;
+    break;
     default:
+      // everything we don't manage directly is managed by supercall.
       retval=DoSuperMethodA(C, (APTR)Gad, (APTR)Get);
   }
 
@@ -131,141 +68,50 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
   KeyboardView *gdata;
   ULONG redraw=0, update=0;
 
-
   gdata=INST_DATA(C, Gad);
 
-//  DKP("SetAttrs()\n");
-
- // ProcessTagList(Set->ops_AttrList,tag,tstate)
+ // set can use a list of attribs to change, so we manage this with a loop.
+ // this also allows to have just one draw refresh for a set of change.
   for( tag = Set->ops_AttrList ;
         tag->ti_Tag != TAG_END ;
         tag++
    )
   {
     data=tag->ti_Data;
-// Printf("SetAttr:%lx\n",tag->ti_Tag);
 
     switch(tag->ti_Tag)
     {
-    /*
-      case TCPALETTE_SelectedColor:
-        data=min(data,gdata->Pens);
-        data=max(0,data);
-        gdata->ActivePen=data;
-        update=1;
-
-        break;
-
-      case TCPALETTE_RGBPalette:
+     case KEYBOARDVIEW_CenterX:
+        if((UWORD)data != gdata->_circleCenterX )
         {
-          ULONG l;
-          struct TCPaletteRGB *rgb;
-
-          rgb=(APTR)data;
-
-          gdata->UndoLength=0;
-          gdata->UndoPen=-1;
-
-          for(l=0;l<gdata->Pens;l++)
-          {
-            gdata->Palette[l]=rgb[l];
-          }
-          redraw=1;
+            gdata->_circleCenterX = (UWORD)data ;
+            update=1; redraw=1;
         }
         break;
-
-      case TCPALETTE_LRGBPalette:
+     case KEYBOARDVIEW_CenterY:
+        if((UWORD)data != gdata->_circleCenterY )
         {
-          ULONG l;
-          struct TCPaletteLRGB *rgb;
-
-          rgb=(APTR)data;
-
-          gdata->UndoLength=0;
-          gdata->UndoPen=-1;
-
-          for(l=0;l<gdata->Pens;l++)
-          {
-            gdata->Palette[l].R=rgb[l].R * 0x01010101;
-            gdata->Palette[l].G=rgb[l].G * 0x01010101;
-            gdata->Palette[l].B=rgb[l].B * 0x01010101;
-          }
-          redraw=1;
+            gdata->_circleCenterY = (UWORD)data ;
+            update=1; redraw=1;
         }
         break;
-
-
-      case TCPALETTE_SelectedRGB:
-          i_StoreUndoIfNeeded(C, Gad, (Msg)Set);
-          gdata->Palette[gdata->ActivePen]=*((struct TCPaletteRGB *)data);
-          update=1;
-        break;
-
-      case TCPALETTE_SelectedLRGB:
-        {
-          struct TCPaletteLRGB *rgb;
-
-
-          i_StoreUndoIfNeeded(C, Gad, (Msg)Set);
-          rgb=(APTR)&data;
-
-          gdata->Palette[gdata->ActivePen].R=rgb->R * 0x01010101;
-          gdata->Palette[gdata->ActivePen].G=rgb->G * 0x01010101;
-          gdata->Palette[gdata->ActivePen].B=rgb->B * 0x01010101;
-          update=1;
-        }
-        break;
-
-      case TCPALETTE_NumColors:
-        gdata->Pens=min(data,256);
-        gdata->Pens=max(1,gdata->Pens);
-        redraw=1;
-        break;
-
-      case TCPALETTE_ShowSelected:
-        gdata->ShowSelected=(data?1:0);
-        update=1;
-        break;
-
-      case TCPALETTE_SelectedRed:
-        i_StoreUndoIfNeeded(C, Gad, (Msg)Set);
-        gdata->Palette[gdata->ActivePen].R=Expand(data, gdata->Precision);
-        update=1;
-        break;
-      case TCPALETTE_SelectedGreen:
-        i_StoreUndoIfNeeded(C, Gad, (Msg)Set);
-        gdata->Palette[gdata->ActivePen].G=Expand(data, gdata->Precision);
-        update=1;
-        break;
-      case TCPALETTE_SelectedBlue:
-        i_StoreUndoIfNeeded(C, Gad, (Msg)Set);
-        gdata->Palette[gdata->ActivePen].B=Expand(data, gdata->Precision);
-        update=1;
-        break;
-      case TCPALETTE_Precision:
-        gdata->Precision=data;
-        break;
-
-      case TCPALETTE_Orientation:
-        gdata->Orientation=data;
-        break;
-
-      case TCPALETTE_EditMode:
-        gdata->EditMode=data;
-        gdata->EMPen=gdata->ActivePen;
-        update=1;
-        break;
-
-      case TCPALETTE_Undo:
-        i_GetUndo(C, Gad, (Msg)Set);
-        redraw=1;
-        break;
-
+     // - - - actually we have to manage these super class attribs:
       case GA_Disabled:
-        gdata->Disabled=data;
+        gdata->_disabled = (UBYTE)data;
         redraw=1;
         break;
-        */
+      case GA_Highlight:
+        gdata->_highlighted = (UBYTE)data;
+        redraw=1;
+        break;
+      case GA_Selected:
+        gdata->_selected = (UBYTE)data;
+        redraw=1;
+        break;
+    default:
+        //note: apparently super call is ont to be managed here (not sure !!!)
+        break;
+
     }
   }
 
