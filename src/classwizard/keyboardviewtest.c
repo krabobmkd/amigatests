@@ -134,6 +134,8 @@ void cleanexit(const char *pmessage)
     exit(0);
 }
 void exitclose(void);
+//test
+struct TextAttr helvetica15bu = { (STRPTR)"helvetica.font", 15, FSF_UNDERLINED | FSF_BOLD, FPF_DISKFONT };
 
 int main(int argc, char **argv)
 {
@@ -208,30 +210,9 @@ int main(int argc, char **argv)
                                     GA_Text, "R_ecenter",
                                     GA_RelVerify, TRUE, // needed
                                 TAG_END);
-/*
-                LAYOUT_AddChild, back_gad = NewObject( NULL, "button.gadget",
-                    GA_ID, GAD_BACK,
-                    GA_Text, "< _Back",
-                    GA_RelVerify, TRUE,
-                    GA_Disabled, TRUE,
-                TAG_END),
-*/
+
 
     if(!app->testbt) cleanexit("Can't button");
-
-
- app->label1 = NewObject( LABEL_GetClass(), NULL,
-                                LABEL_DrawInfo, app->drawInfo,
-                              //  IA_Font, &helvetica15bu,
-                                LABEL_Justification, LABEL_CENTRE,
-                                LABEL_Text,(ULONG)"Label 1",
-                            TAG_END);
- app->label2 = NewObject( LABEL_GetClass(), NULL,
-                                LABEL_DrawInfo, app->drawInfo,
-                           //     IA_Font, &helvetica15bu,
-                                LABEL_Justification, LABEL_CENTRE,
-                                LABEL_Text,(ULONG) "Label 2",
-                            TAG_END);
 
     app->kbdview = NewObject( NULL, KeyboardView_CLASS_ID,
                               //      GA_TextAttr, &garnet16,
@@ -240,26 +221,42 @@ int main(int argc, char **argv)
                                 TAG_END);
     if(!app->kbdview) cleanexit("Can't kbdview");
 
-
     app->horizontallayout = reaction_createLayout(LAYOUT_ORIENT_HORIZ,
                     app->testbt,
                     app->kbdview,NULL,NULL);
     if(!app->horizontallayout) cleanexit("Can't layout");
+
+
+
+ app->label1 = NewObject( LABEL_GetClass(), NULL,
+                                LABEL_DrawInfo, app->drawInfo,                                
+                                //IA_Font, &helvetica15bu,
+                                //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+                                LABEL_Justification, LABEL_CENTRE,
+                                LABEL_Text,(ULONG)"Label 1",
+                            TAG_END);
+
+ app->label2 = NewObject( LABEL_GetClass(), NULL,
+                                LABEL_DrawInfo, app->drawInfo,
+                                //IA_Font, &helvetica15bu,
+                               //re LABEL_Justification, LABEL_CENTRE,
+                                LABEL_Text,(ULONG) "Label 2",
+                            TAG_END);
 
     app->bottombarlayout =
          NewObject( LAYOUT_GetClass(), NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
                 LAYOUT_EvenSize, TRUE,
                 LAYOUT_HorizAlignment, LALIGN_RIGHT,
-                CHILD_MaxHeight,app->fontHeight,
+              //  CHILD_ScaleHeight,1, //%
+               // CHILD_MaxHeight,app->fontHeight,
                // LAYOUT_SpaceInner, FALSE,
-                LAYOUT_AddChild, app->label1,
-                LAYOUT_AddChild, app->label2,
+                LAYOUT_AddImage, app->label1,
+                LAYOUT_AddImage, app->label2,
+              //  GA_Height,app->fontHeight,
                 TAG_DONE);
 
     if(!app->bottombarlayout) cleanexit("Can't layout");
-
-
 
     {
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);

@@ -85,14 +85,16 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
         if((UWORD)data != gdata->_circleCenterX )
         {
             gdata->_circleCenterX = (UWORD)data ;
-            update=1; redraw=1;
+            //update=1;
+            redraw=1;
         }
         break;
      case KEYBOARDVIEW_CenterY:
         if((UWORD)data != gdata->_circleCenterY )
         {
             gdata->_circleCenterY = (UWORD)data ;
-            update=1; redraw=1;
+            //update=1;
+            redraw=1;
         }
         break;
      // - - - actually we have to manage these super class attribs:
@@ -112,8 +114,8 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
         //note: apparently super call is ont to be managed here (not sure !!!)
         break;
 
-    }
-  }
+    } // end switch
+  } // end for
 
   if(redraw | update)
   {
@@ -121,8 +123,15 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
 
     if(rp=ObtainGIRPort(Set->ops_GInfo))
     {
-      DoMethod((Object *)Gad,GM_RENDER,Set->ops_GInfo,rp,(redraw?GREDRAW_REDRAW:GREDRAW_UPDATE));
-      ReleaseGIRPort(rp);
+        // freeze with "..." call with GCC6.5, use local struct works 100%.
+        struct gpRender gpr;
+        gpr.MethodID = GM_RENDER;
+        gpr.gpr_GInfo = Set->ops_GInfo;
+        gpr.gpr_RPort = rp;
+        gpr.gpr_Redraw = (redraw?GREDRAW_REDRAW:GREDRAW_UPDATE);
+
+        DoMethodA((Object *)Gad,(Msg)&gpr.MethodID);
+        ReleaseGIRPort(rp);
     }
 
     if(redraw)
