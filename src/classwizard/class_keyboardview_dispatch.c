@@ -33,7 +33,6 @@ ULONG __asm __saveds KeyboardView_Dispatcher(
                     register __a1 union MsgUnion *M)
 #else
 #ifdef __GNUC__
-// GCC
 ULONG KeyboardView_Dispatcher(
                     Class *C  __asm("a0"),
                     struct Gadget *Gad  __asm("a2"),
@@ -46,15 +45,11 @@ ULONG KeyboardView_Dispatcher(
 {
   KeyboardView *gdata;
   ULONG retval=0;
-//    Printf("KeyboardView_Dispatcher %lx \n",(int)M->MethodID);
   gdata=INST_DATA(C, Gad);
-
-//  DKP("Dispatcher MethodID %08lx\n", M->MethodID);
 
   switch(M->MethodID)
   {
     case OM_NEW:
- //   Printf("kbd OM_NEW\n");
       if(Gad=(struct Gadget *)DoSuperMethodA(C,(Object *)Gad,(Msg)M))
       {
         gdata=INST_DATA(C, Gad);

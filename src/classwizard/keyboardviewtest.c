@@ -18,6 +18,8 @@
 
 #include <intuition/screens.h>
 #include <intuition/icclass.h>
+
+//#include <intuition/cghooks.h>
 //#include <libraries/gadtools.h>
 #include <proto/diskfont.h>
 #include <proto/exec.h>
@@ -51,7 +53,6 @@
 // and are not GCC compatible anyway.
 #include "reactioninlines.h"
 
-
 // DOSBase is managed by C startup...
 // struct DosLibrary *DOSBase=NULL;
 struct IntuitionBase *IntuitionBase=NULL;
@@ -74,32 +75,49 @@ struct Library *CheckBoxBase=NULL;
 struct Library *KeyBoardViewBase=NULL;
 #endif
 
+
+void cleanexit(const char *pmessage)
+{
+    if(pmessage) printf("%s\n",pmessage);
+    exit(0);
+}
+void exitclose(void);
+
+// usefull for dispatcher
+typedef union MsgUnion
+{
+  ULONG  MethodID;
+  // from classusr.h or gadgetclass.h, all starts with MethodID.
+  struct opSet        opSet;
+  struct opUpdate     opUpdate;
+  struct opGet        opGet;
+  struct gpHitTest    gpHitTest;
+  struct gpRender     gpRender;
+  struct gpInput      gpInput;
+  struct gpGoInactive gpGoInactive;
+  struct gpLayout     gpLayout;
+} *Msgs;
+
 /* Gadget action IDs, just to demonstrate some interactions
  */
-#define GAD_RECENTER 1
-//#define GAD_FORWARD 2
-//#define GAD_QUIT 3
-//#define GAD_GETFILE 4
-//#define GAD_GETFONT 5
-//#define GAD_GETSCREEN 6
+#define GAD_BUTTON_RECENTER 1
+#define GAD_KEYBOARDVIEW_TOTEST 2
 
-
-
-//struct TextAttr helvetica15bu = { (STRPTR)"helvetica.font", 15, FSF_UNDERLINED | FSF_BOLD, FPF_DISKFONT };
-//struct TextAttr garnet16 = { (STRPTR)"garnet.font", 16, 0, FPF_DISKFONT };
-
+// all apps things here:
+//  - - - - a reaction App should have a model class to receive UI notifications.
+// let's just use it to store anything including gadgets...
+// DEVTODO: you can extend this example app struct.
 struct App
 {
-    struct Screen *screen;
-
-    Object *window_obj; // object logic
-    struct Window *win; // current reopened instance, as intuition Window.
+    Object *window_obj; // window as boopsi object
+    struct Window *win; // current re-opened windows, as a classic intuition Window.
 
     struct MsgPort *app_port;
 
     struct Screen *lockedscreen;
-    struct DrawInfo *drawInfo;
-    ULONG   fontHeight;
+    struct DrawInfo *drawInfo; // informations on how to draw on the screen, passed to gagdets.
+
+    ULONG   fontHeight; // some stat to size according to current font.
 
     Object *mainlayout;
         Object *horizontallayout;
@@ -110,39 +128,73 @@ struct App
             Object *label2;
 
 };
-
+// Boopsi class pointer to manage our private modelclass.
+Class *AppModelClass = NULL;
+// App Model instance as a Boopsi object.
+struct Object *AppInstance = NULL;
+// App Modelinstance as our private struct.
 struct App *app=NULL;
 
-
-Object *reaction_createLayout(int horiz,Object *childa,Object *childb,Object *childc,Object *childd)
+#ifdef __SASC
+ULONG __asm __saveds AppDispatch(register __a0 struct IClass *C,register __a2 Object *obj, register __a1 union MsgUnion *M)
+#else
+#ifdef __GNUC__
+ULONG AppDispatch(Class *C  __asm("a0"),Object *obj  __asm("a2"),Msgs M  __asm("a1") )
+#else
+ need SASC or GCC
+#endif
+#endif
 {
-    return NewObject( LAYOUT_GetClass(), NULL,
-                LAYOUT_Orientation, horiz,
-                LAYOUT_EvenSize, TRUE,
-                LAYOUT_HorizAlignment, LALIGN_RIGHT,
-               // LAYOUT_SpaceInner, FALSE,
-                LAYOUT_AddChild, childa,
-                ((childb)?LAYOUT_AddChild:TAG_DONE),childb,
-                ((childc)?LAYOUT_AddChild:TAG_DONE),childc,
-                ((childd)?LAYOUT_AddChild:TAG_DONE),childd,
-                TAG_DONE);
+  ULONG retval=0;
+  switch(M->MethodID)
+  {
+    case OM_NEW:
+        if(obj=(Object *)DoSuperMethodA(C,(Object *)obj,(Msg)M))
+        {
+            app=INST_DATA(C, obj);
+            retval = (ULONG)obj;
+        }
+    break;
+    case OM_DISPOSE:
+        retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
+      break;
+    case OM_UPDATE:
+        Printf("model receive OM_UPDATE:%08x %08x\n",(int)M->opUpdate.opu_GInfo,(int)app->kbdview);
+        // here receive events from gadgets as target.
+        retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
+        break;
+    default:
+        retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
+    break;
+  }
+  return retval;
 }
-
-void cleanexit(const char *pmessage)
+int initAppModel()
 {
-    if(pmessage) printf("%s\n",pmessage);
-    exit(0);
+    // this is how you create a private transient class:
+    AppModelClass = MakeClass(NULL,"modelclass",NULL,sizeof(struct App),0);
+    if(!AppModelClass) return 0;
+
+    AppModelClass->cl_Dispatcher.h_Entry = (HOOKFUNC) &AppDispatch;
+
+    AppInstance = NewObject( AppModelClass, NULL, TAG_DONE);
+    if(!AppInstance) return 0;
+
+    return 1;
 }
-void exitclose(void);
-//test
-struct TextAttr helvetica15bu = { (STRPTR)"helvetica.font", 15, FSF_UNDERLINED | FSF_BOLD, FPF_DISKFONT };
+void closeAppModel()
+{
+    if(AppInstance) DisposeObject(AppInstance);
+    AppInstance = NULL;
+    app=NULL;
+    if(AppModelClass) FreeClass(AppModelClass);
+    AppModelClass = NULL;
+}
+//  - - - -- - - - -  end of App modelclass management.
 
 int main(int argc, char **argv)
 {
     atexit(&exitclose);
-
-    app = AllocVec(sizeof(struct App),MEMF_CLEAR);
-    if(!app) return 1;
 
     // - - - - open libraries...
 
@@ -183,12 +235,12 @@ int main(int argc, char **argv)
 #ifdef KEYBOARDVIEW_STATICLINK
     KeyboardView_static_class_init();
 #else
-    if ( ! (KeyBoardViewBase = OpenLibrary(
-                "keyboardview.gadget"
-                ,VERSION_KEYBOARDVIEW)))
+    if ( ! (KeyBoardViewBase = OpenLibrary("keyboardview.gadget",VERSION_KEYBOARDVIEW)))
         cleanexit("Can't open keyboardview.gadget");
 #endif
 
+
+    if(!initAppModel())  cleanexit("Can't create app");
 
 //    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
 //        cleanexit("Can't open checkbox.gadget");
@@ -206,7 +258,7 @@ int main(int argc, char **argv)
 
     app->testbt = NewObject( NULL, "button.gadget",
                               //      GA_TextAttr, &garnet16,
-                                    GA_ID,GAD_RECENTER,
+                                    GA_ID,GAD_BUTTON_RECENTER,
                                     GA_Text, "R_ecenter",
                                     GA_RelVerify, TRUE, // needed
                                 TAG_END);
@@ -214,17 +266,28 @@ int main(int argc, char **argv)
 
     if(!app->testbt) cleanexit("Can't button");
 
-    app->kbdview = NewObject( NULL, KeyboardView_CLASS_ID,
-                              //      GA_TextAttr, &garnet16,
-                               //     GA_Text, "B_ig Button",
-                               //     GA_RelVerify, TRUE, // needed
-                                TAG_END);
-    if(!app->kbdview) cleanexit("Can't kbdview");
 
-    app->horizontallayout = reaction_createLayout(LAYOUT_ORIENT_HORIZ,
-                    app->testbt,
-                    app->kbdview,NULL,NULL);
-    if(!app->horizontallayout) cleanexit("Can't layout");
+#ifdef KEYBOARDVIEW_STATICLINK
+        app->kbdview = NewObject(KeyboardViewClassPtr, NULL,
+#else
+        app->kbdview = NewObject(NULL, KeyboardView_CLASS_ID,
+#endif
+        GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
+        ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+            TAG_END);
+
+    if(!app->kbdview) cleanexit("Can't create kbdview");
+
+    app->horizontallayout = NewObject( LAYOUT_GetClass(), NULL,
+                LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
+                LAYOUT_EvenSize, TRUE,
+                LAYOUT_HorizAlignment, LALIGN_RIGHT,
+               // LAYOUT_SpaceInner, FALSE,
+                LAYOUT_AddChild, app->testbt,
+                LAYOUT_AddChild, app->kbdview,
+                TAG_DONE);
+
+    if(!app->horizontallayout) cleanexit("Can't layout 1");
 
 
 
@@ -239,7 +302,7 @@ int main(int argc, char **argv)
  app->label2 = NewObject( LABEL_GetClass(), NULL,
                                 LABEL_DrawInfo, app->drawInfo,
                                 //IA_Font, &helvetica15bu,
-                               //re LABEL_Justification, LABEL_CENTRE,
+                                LABEL_Justification, LABEL_CENTRE,
                                 LABEL_Text,(ULONG) "Label 2",
                             TAG_END);
 
@@ -256,7 +319,7 @@ int main(int argc, char **argv)
               //  GA_Height,app->fontHeight,
                 TAG_DONE);
 
-    if(!app->bottombarlayout) cleanexit("Can't layout");
+    if(!app->bottombarlayout) cleanexit("Can't layout 2");
 
     {
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);
@@ -269,8 +332,9 @@ int main(int argc, char **argv)
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
             LAYOUT_AddChild, app->horizontallayout,
             LAYOUT_AddChild, app->bottombarlayout,
+                CHILD_WeightedHeight,0,
             TAG_END);
-        if (!app->mainlayout) cleanexit("layout class error");
+        if (!app->mainlayout) cleanexit("layout error 3");
     } //end if screen
 
 
@@ -281,13 +345,13 @@ int main(int argc, char **argv)
         WA_Left, 0,
         WA_Top, app->lockedscreen->Font->ta_YSize + 3,
         WA_CustomScreen, app->lockedscreen,
-        WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY,
+        WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_VANILLAKEY, // we want localized keys , not the raws.
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
-        WA_Title, "Inputs Checkup",
+        WA_Title, "KeyboardView Test",
         WINDOW_ParentGroup, app->mainlayout,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, GetDiskObject("PROGDIR:ReAction"),
-        WINDOW_IconTitle, "ReAction Demo",
+        WINDOW_IconTitle, "KeyboardView Test",
         WINDOW_AppPort, app->app_port,
     TAG_END);
     if(!app->window_obj) cleanexit("can't create window");
@@ -322,9 +386,11 @@ int main(int argc, char **argv)
             {
                 switch(result & WMHI_CLASSMASK)
                 {
-                    case WMHI_RAWKEY:
+                   case WMHI_RAWKEY:
                         // quit on "esc down" key.
                         if((result & WMHI_KEYMASK) == 0x45) ok = FALSE;
+                        break;
+                    case WMHI_VANILLAKEY: //  we also want localized key codes
                         break;
                     case WMHI_CLOSEWINDOW:
                         // quit on window close gadget
@@ -334,7 +400,7 @@ int main(int argc, char **argv)
                     case WMHI_GADGETUP:
                         switch (result & WMHI_GADGETMASK)
                         {
-                            case GAD_RECENTER:
+                            case GAD_BUTTON_RECENTER:
                                 // does the button action.
                                 // change attributes of the gadget we created:
                                 // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
@@ -458,12 +524,14 @@ void exitclose(void)
         if(app->drawInfo) FreeScreenDrawInfo(app->lockedscreen, app->drawInfo);
         if(app->lockedscreen) UnlockPubScreen(0, app->lockedscreen);
 
-        FreeVec(app);
     }
+    closeAppModel();
 
 
 #ifndef KEYBOARDVIEW_STATICLINK
     if(KeyBoardViewBase) CloseLibrary(KeyBoardViewBase);
+#else
+    KeyboardView_static_class_close();
 #endif
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
     if(LabelBase) CloseLibrary(LabelBase);

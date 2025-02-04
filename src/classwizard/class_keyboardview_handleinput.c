@@ -66,7 +66,7 @@ ULONG KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG F
 // ULONG SuperNotifyA(Class *CL, Object *O, struct opUpdate *M, struct TagItem *TagList)
 //   return(DoSuperMethod(CL,O,OM_NOTIFY, TagList, M->opu_GInfo, ((M->MethodID == OM_UPDATE)?(M->opu_Flags): 0)));
 
-// boopsi_GetGInfo(M) doesnt exist -> gpInput.
+// boopsi_GetGInfo(M) doesnt exist -> it's opSet->ops_GInfo
 
   res = DoSuperMethod(C,(APTR)Gad,OM_NOTIFY, &Tags ); //  boopsi_GetGInfo(M), Flags)
 

@@ -49,13 +49,14 @@ ULONG  __stdargs CallHookPkt( struct Hook *hook, APTR object, APTR paramPacket )
 #define AINLINE static inline
 #endif
 
-// CallHookPkt is rom utilitybase...
+// CallHookPkt is in utility...
 extern struct Library *UtilityBase;
 
 AINLINE ULONG DoMethodA( Object *obj, Msg message ) {
     //   if (!obj || !message) return 0L;
    return CallHookPkt((struct Hook *) OCLASS(obj), obj, message);
 }
+
 AINLINE ULONG DoMethod( Object *obj, ULONG methodID, ... ) {
     //   if (!obj) return 0L;
    return CallHookPkt((struct Hook *) OCLASS(obj), obj, (APTR)&methodID);
