@@ -1,12 +1,32 @@
 /** little boopsi/reaction example
  * that uses the gadget to test,
- * in a layout, with a button.
+ * in a layout, with a few buttons interaction.
  * This will use a static link of the class definition
  * when XXXXX_STATICLINK is defined,
  * (which is usefull for debugging)
  * and will search the shared .class file
- * when this is not defined, which "is the way".
+ * when this is not defined.
+ * Having different _STATICLINK names per
+ * classes allow to have multiple class linked
+ * as static or not per project.
  */
+/**
+ Useful reminder when coding Boopsi/Reaction:
+    - Boopsi classes can extend modelclass, gadget, image, ...
+    - In a layout gadget, you put gadgets with LAYOUT_AddChild.
+    - In a layout gadget, you put images with LAYOUT_AddImage.
+    - label.image can display text and/or images,
+    - label.image extends "image" and the text can't change.
+    - for a dynamic text label, use a flat button.
+    - you change one or more object attributes with SetAttrs()
+    - ...except for gadgets, in this case it's SetGadgetAttrs()
+        (certainly because of the antique gadtools API if you ask.)
+    - It's GetAttribs() for everyone to get attributes values.
+    - Definitions for attribs are in their class include down there.
+    - All this "Datatype" story is the very same thing.
+
+*/
+
 
 #include <stdio.h>
 #include <string.h>
@@ -19,19 +39,17 @@
 #include <intuition/screens.h>
 #include <intuition/icclass.h>
 
-//#include <intuition/cghooks.h>
-//#include <libraries/gadtools.h>
 #include <proto/diskfont.h>
 #include <proto/exec.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>
-#include <proto/layers.h>
+#include <proto/utility.h>
 #include <proto/dos.h>
 #include <proto/icon.h>
 #include <exec/alerts.h>
-//#include <proto/utility.h>
 
-// too generic, include planet earth.
+// this include includes a lot of things.
+// In C this is better only including what is needed.
 //#include <reaction/reaction.h>
 
 #include <proto/window.h>
@@ -43,17 +61,22 @@
 #include <proto/button.h>
 #include <gadgets/button.h>
 
+#include <proto/checkbox.h>
+#include <gadgets/checkbox.h>
+
 #include <proto/label.h>
 #include <images/label.h>
+
+
+
 // this is the public definition of the class we test:
 #include "class_keyboardview.h"
 
-
-// because original reaction macros are a nightmare
-// and are not GCC compatible anyway.
+// because original reaction macros
+// are not modern GCC compatible.
 #include "reactioninlines.h"
 
-// DOSBase is managed by C startup...
+// DOSBase is already opened by C startup...
 // struct DosLibrary *DOSBase=NULL;
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
@@ -79,11 +102,13 @@ struct Library *KeyBoardViewBase=NULL;
 void cleanexit(const char *pmessage)
 {
     if(pmessage) printf("%s\n",pmessage);
+    // will execute functions registered with atexit().
+    // this way if C startup manages it, Ctrl-C will also close nicely.
     exit(0);
 }
 void exitclose(void);
 
-// usefull for dispatcher
+// usefull union for dispatchers. Each structs also starts with MethodID.
 typedef union MsgUnion
 {
   ULONG  MethodID;
@@ -103,8 +128,10 @@ typedef union MsgUnion
 #define GAD_BUTTON_RECENTER 1
 #define GAD_KEYBOARDVIEW_TOTEST 2
 
-// all apps things here:
-//  - - - - a reaction App should have a model class to receive UI notifications.
+// all app related variables are here:
+// also we register that struct as a BOOPSI model,
+// which is useful to receive notifications
+// from gadgets that are created with ICA_TARGET, (ULONG)AppInstance
 // let's just use it to store anything including gadgets...
 // DEVTODO: you can extend this example app struct.
 struct App
@@ -125,8 +152,8 @@ struct App
             Object *kbdview;
         Object *bottombarlayout;
             Object *label1;
-            Object *label2;
-
+            Object *labelValues;
+            Object *disablecheckbox;
 };
 // Boopsi class pointer to manage our private modelclass.
 Class *AppModelClass = NULL;
@@ -145,6 +172,7 @@ ULONG AppDispatch(Class *C  __asm("a0"),Object *obj  __asm("a2"),Msgs M  __asm("
 #endif
 #endif
 {
+    // Warning: this is executed on "intuition's context", can't use dos nor print, like for interupts.
   ULONG retval=0;
   switch(M->MethodID)
   {
@@ -159,9 +187,38 @@ ULONG AppDispatch(Class *C  __asm("a0"),Object *obj  __asm("a2"),Msgs M  __asm("
         retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
       break;
     case OM_UPDATE:
-        Printf("model receive OM_UPDATE:%08x %08x\n",(int)M->opUpdate.opu_GInfo,(int)app->kbdview);
-        // here receive events from gadgets as target.
-        retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
+        {
+            struct TagItem *ptag;
+            // here receive events from gadgets as target.
+            ULONG sender_ID=0;
+            if((ptag = FindTagItem( GA_ID,M->opUpdate.opu_AttrList ))!=NULL) sender_ID = ptag->ti_Data;
+
+            // our gadget is notifying new clicked coordinates!
+            if( sender_ID == GAD_KEYBOARDVIEW_TOTEST )
+            {   // table used as parameter for the button internal sprintf() formating
+                LONG centerXY[2];
+                if((ptag = FindTagItem( KEYBOARDVIEW_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
+                    centerXY[0] = ptag->ti_Data;
+                if((ptag = FindTagItem( KEYBOARDVIEW_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
+                    centerXY[1] = ptag->ti_Data;
+
+                if(app->labelValues)
+                {
+                    // display coords in button as fake label:
+                    SetGadgetAttrs(app->labelValues,app->win,NULL,
+                        GA_Text,(ULONG)"X: %ld Y: %ld", // in amiga API %d is for short and %ld for longs.
+                        BUTTON_VarArgs,(ULONG) &centerXY[0],
+                        TAG_END);
+
+                   // RethinkLayout((struct Gadget *)app->bottombarlayout,app->win,NULL,TRUE);
+
+                }
+                retval = 1;
+            } else // if ...other receive mamangement... else
+            {
+                retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
+            }
+        }
         break;
     default:
         retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
@@ -169,7 +226,8 @@ ULONG AppDispatch(Class *C  __asm("a0"),Object *obj  __asm("a2"),Msgs M  __asm("
   }
   return retval;
 }
-int initAppModel()
+
+int initAppModel(void)
 {
     // this is how you create a private transient class:
     AppModelClass = MakeClass(NULL,"modelclass",NULL,sizeof(struct App),0);
@@ -182,7 +240,7 @@ int initAppModel()
 
     return 1;
 }
-void closeAppModel()
+void closeAppModel(void)
 {
     if(AppInstance) DisposeObject(AppInstance);
     AppInstance = NULL;
@@ -232,8 +290,11 @@ int main(int argc, char **argv)
     if ( ! (LabelBase = OpenLibrary("images/label.image",44)))
         cleanexit("Can't open label.image");
 
+   if ( ! (CheckBoxBase = OpenLibrary("gadgets/checkbox.gadget",44)))
+       cleanexit("Can't open checkbox.gadget");
+
 #ifdef KEYBOARDVIEW_STATICLINK
-    KeyboardView_static_class_init();
+    if(KeyboardView_static_class_init()) cleanexit("Can't create private class");
 #else
     if ( ! (KeyBoardViewBase = OpenLibrary("keyboardview.gadget",VERSION_KEYBOARDVIEW)))
         cleanexit("Can't open keyboardview.gadget");
@@ -242,8 +303,6 @@ int main(int argc, char **argv)
 
     if(!initAppModel())  cleanexit("Can't create app");
 
-//    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
-//        cleanexit("Can't open checkbox.gadget");
 
     // = = = = = now that needed classes arte loaded
     // = = = = = creates the instances...
@@ -257,6 +316,7 @@ int main(int argc, char **argv)
     if(app->drawInfo && app->drawInfo->dri_Font) app->fontHeight =app->drawInfo->dri_Font->tf_YSize + 4;
 
     app->testbt = NewObject( NULL, "button.gadget",
+                                    GA_DrawInfo, app->drawInfo,
                               //      GA_TextAttr, &garnet16,
                                     GA_ID,GAD_BUTTON_RECENTER,
                                     GA_Text, "R_ecenter",
@@ -292,19 +352,35 @@ int main(int argc, char **argv)
 
 
  app->label1 = NewObject( LABEL_GetClass(), NULL,
-                                LABEL_DrawInfo, app->drawInfo,                                
-                                //IA_Font, &helvetica15bu,
-                                //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
-                                LABEL_Justification, LABEL_CENTRE,
-                                LABEL_Text,(ULONG)"Label 1",
-                            TAG_END);
+                        LABEL_DrawInfo, app->drawInfo,
+                        //IA_Font, &helvetica15bu,
+                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+                        LABEL_Justification, LABEL_CENTRE,
+                        LABEL_Text,(ULONG)"Values:",
+                    TAG_END);
 
- app->label2 = NewObject( LABEL_GetClass(), NULL,
-                                LABEL_DrawInfo, app->drawInfo,
-                                //IA_Font, &helvetica15bu,
-                                LABEL_Justification, LABEL_CENTRE,
-                                LABEL_Text,(ULONG) "Label 2",
-                            TAG_END);
+ app->labelValues = NewObject( NULL, "button.gadget",
+                        GA_DrawInfo,(ULONG) app->drawInfo,
+                        BUTTON_BevelStyle,BVS_NONE,
+                        BUTTON_Transparent, TRUE,
+                        BUTTON_Justification, BCJ_CENTER,
+                        GA_Text,(ULONG)"...",
+                    TAG_END);
+ {
+    struct TagItem attribToAttribMapping[] =
+    {
+        {GA_SELECTED, GA_DISABLED},
+        {TAG_END, }
+    };
+
+ app->disablecheckbox = NewObject( CHECKBOX_GetClass(), NULL,
+                        GA_DrawInfo,(ULONG) app->drawInfo,
+                        GA_Text,(ULONG)"Disable",
+                       ICA_TARGET,(ULONG)app->kbdview, // send the state change to this.
+                    //   ICA_MAP,(ULONG)&attribToAttribMapping[0],
+                    TAG_END);
+ }
+    if(!app->disablecheckbox) cleanexit("Can't create checkbox");
 
     app->bottombarlayout =
          NewObject( LAYOUT_GetClass(), NULL,
@@ -315,7 +391,8 @@ int main(int argc, char **argv)
                // CHILD_MaxHeight,app->fontHeight,
                // LAYOUT_SpaceInner, FALSE,
                 LAYOUT_AddImage, app->label1,
-                LAYOUT_AddImage, app->label2,
+                LAYOUT_AddChild, app->labelValues,
+                LAYOUT_AddChild, app->disablecheckbox,
               //  GA_Height,app->fontHeight,
                 TAG_DONE);
 
@@ -516,7 +593,8 @@ void exitclose(void)
                 if(app->bottombarlayout) DisposeObject(app->bottombarlayout);
                 else {
                     if(app->label1) DisposeObject(app->label1);
-                    if(app->label2) DisposeObject(app->label2);
+                    if(app->labelValues) DisposeObject(app->labelValues);
+                    if(app->disablecheckbox) DisposeObject(app->disablecheckbox);
                 }
             }
         }

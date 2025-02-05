@@ -24,6 +24,7 @@
 ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
 {
   ULONG retval=1;
+  int   DoSuperCall=0;
   KeyboardView *gdata;
   ULONG *data;
 
@@ -42,17 +43,21 @@ ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
     // super class gadget things
     case GA_Disabled:
         *data = (LONG)gdata->_disabled;
+        DoSuperCall = 1;
     break;
     case GA_Highlight:
         *data = (LONG)gdata->_highlighted;
+        DoSuperCall = 1;
     break;
     case GA_Selected:
         *data = (LONG)gdata->_selected;
+        DoSuperCall = 1;
     break;
     default:
+        DoSuperCall = 1;
       // everything we don't manage directly is managed by supercall.
-      retval=DoSuperMethodA(C, (APTR)Gad, (APTR)Get);
   }
+  if(DoSuperCall)  retval=DoSuperMethodA(C, (APTR)Gad, (APTR)Get);
 
   return(retval);
 }
@@ -66,7 +71,7 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
   struct TagItem *tag;
   ULONG retval=0,data;
   KeyboardView *gdata;
-  ULONG redraw=0, update=0;
+  ULONG redraw=0, update=0, notifCoords=0;
 
   gdata=INST_DATA(C, Gad);
 
@@ -87,6 +92,7 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
             gdata->_circleCenterX = (UWORD)data ;
             //update=1;
             redraw=1;
+            notifCoords = 1;
         }
         break;
      case KEYBOARDVIEW_CenterY:
@@ -95,6 +101,7 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
             gdata->_circleCenterY = (UWORD)data ;
             //update=1;
             redraw=1;
+            notifCoords = 1;
         }
         break;
      // - - - actually we have to manage these super class attribs:
@@ -134,9 +141,9 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
         ReleaseGIRPort(rp);
     }
 
-    if(redraw)
+    if(notifCoords)
     {
-      KeyboardView_Notify(C,Gad,(Msg)Set,0);
+        KeyboardView_NotifyCoords(C,Gad,Set->ops_GInfo);
     }
   }
 

@@ -24,7 +24,6 @@ extern "C" {
 * DEVTODO: make this class evolve to retain the data needed to draw and interact with your widget.
 */
 typedef struct IKeyboardView {
-
     // let's say we have coordinates of the center of the circle
     UWORD _circleCenterX,_circleCenterY;
     // this is a super class (gadget) state managed by
@@ -44,9 +43,6 @@ typedef struct IKeyboardView {
     int         _updateClipRegion;
 #endif
 } KeyboardView;
-
-// ADE gcc2.5 doesn't have:
-struct gpDomain;
 
 ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);
 ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get);
@@ -75,7 +71,7 @@ typedef union MsgUnion
   struct gpLayout     gpLayout;
 } *Msgs;
 
-ULONG KeyboardView_Notify(Class *C, struct Gadget *Gad, Msg M, ULONG Flags);
+ULONG KeyboardView_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	*GInfo);
 
 /** this is the struct that is the extended struct Library
  * That is created with OpenLibrary().

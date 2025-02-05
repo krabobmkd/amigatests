@@ -2,7 +2,7 @@
     #include <proto/exec.h>
     #include <proto/intuition.h>
     #include <proto/graphics.h>
-    #include <proto/dos.h>
+    #include <proto/utility.h>
 #ifdef __SASC
     #include <clib/alib_protos.h>
 //    #include "minialib.h"
@@ -60,7 +60,7 @@ ULONG KeyboardView_Dispatcher(
         // set gadget (super class) attributes for this instance like this:
         // (BOOL) Indicate whether gadget is part of TAB/SHIFT-TAB cycle.
         // default to false
-        SetSuperAttrs(C,Gad, GA_TabCycle,TRUE,TAG_DONE);
+        SetSuperAttrs(C,(Object *)Gad, GA_TabCycle,TRUE,TAG_DONE);
 
 #ifdef USE_REGION_CLIPPING
     gdata->_clipRegion = NewRegion();
@@ -90,15 +90,12 @@ ULONG KeyboardView_Dispatcher(
       break;
 
     case OM_UPDATE:
- //   Printf("kbd OM_UPDATE\n");
     case OM_SET:
-   //     Printf("kbd OM_SET:\n");
       retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
       KeyboardView_SetAttrs(C,Gad,(struct opSet *)M);
      break;
 
     case OM_GET:
-  //  Printf("kbd OM_GET\n");
       KeyboardView_GetAttr(C,Gad,(struct opGet *)M);
      break;
 
@@ -115,12 +112,10 @@ ULONG KeyboardView_Dispatcher(
       break;
 
     case GM_HITTEST:
- //   Printf("kbd GM_HITTEST\n");
       retval = GMR_GADGETHIT;
       break;
 
     case GM_GOACTIVE:
-  //  Printf("kbd GM_GOACTIVE\n");
       Gad->Flags |= GFLG_SELECTED;
       retval=KeyboardView_HandleInput(C,Gad,(struct gpInput *)M);
 //      gad_Render(C,Gad,(APTR)M,GREDRAW_UPDATE);
@@ -128,7 +123,6 @@ ULONG KeyboardView_Dispatcher(
       break;
 
     case GM_GOINACTIVE:
-   // Printf("kbd GM_GOINACTIVE\n");
       Gad->Flags &= ~GFLG_SELECTED;
       KeyboardView_Render(C,Gad,(APTR)M,GREDRAW_UPDATE);
       break;
@@ -143,12 +137,10 @@ ULONG KeyboardView_Dispatcher(
       break;
 
     case GM_HANDLEINPUT:
-  //  Printf("kbd GM_HANDLEINPUT\n");
       retval=KeyboardView_HandleInput(C,Gad,(struct gpInput *)M);
       break;
 
     case GM_DOMAIN:
-   // Printf("kbd GM_DOMAIN\n");
       KeyboardView_Domain(C, Gad, (APTR)M);
       retval=1;
 

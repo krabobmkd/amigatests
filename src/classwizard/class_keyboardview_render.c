@@ -43,7 +43,6 @@ ULONG KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
   if(Gad) gdata=INST_DATA(C, Gad);
 // Printf("KeyboardView_Domain data:%lx\n",(int)gdata);
 
-
   D->gpd_Domain.Left=0;
   D->gpd_Domain.Top=0;
 
@@ -85,10 +84,10 @@ ULONG KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
   return(1);
 }
 
-
-// method GM_LAYOUT
 /**
- * When we have to resize what's inside.
+ * method GM_LAYOUT
+ * The gadget knows its final coordinates,
+ * So we may have to resize what's inside our gadget.
  */
 ULONG KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
 {
@@ -220,6 +219,7 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
 
   if(rp)
   {
+    int penbg=1,penb=2,penc=3;
 //  struct Rectangle gadgetrec;
     struct Region *oldClipRegion;
       WORD left   =Gad->LeftEdge;
@@ -227,6 +227,10 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
       WORD width  =Gad->Width;
       WORD height =Gad->Height;
 
+    if(gdata->_disabled)
+    {
+        penbg = 0;
+    }
     //
 //    gadgetrec.MinX = left;
 //    gadgetrec.MinY = top;
@@ -247,7 +251,7 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
     oldClipRegion = InstallClipRegion( rp->Layer, gdata->_clipRegion);
 #endif
       SetDrMd(rp,JAM1);
-      SetAPen(rp,1);
+      SetAPen(rp,penbg);
       RectFill(rp,left,
                   top,
                   left + width  -1,
@@ -255,9 +259,9 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
     {
         UWORD xc = left + ((width*gdata->_circleCenterX)>>16);
         UWORD yc = top + ((height*gdata->_circleCenterY)>>16);
-        SetAPen(rp,2);
+        SetAPen(rp,penb);
         DrawEllipse(rp,xc,yc,width>>1,height>>1);
-        SetAPen(rp,3);
+        SetAPen(rp,penc);
         DrawEllipse(rp,xc,yc,width>>2,height>>2);
     }
 #ifdef USE_REGION_CLIPPING

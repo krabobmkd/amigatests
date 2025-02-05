@@ -152,7 +152,7 @@ void KeyboardView_DestroyClass(struct ExtClassLib *LibBase  __asm("a6") )
 #ifdef KEYBOARDVIEW_STATICLINK
 
 // just use this one once when static link
-void KeyboardView_static_class_init()
+int KeyboardView_static_class_init()
 { 
     if(KeyboardViewClassPtr=MakeClass(NULL,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
     {

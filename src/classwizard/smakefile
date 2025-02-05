@@ -61,6 +61,11 @@ $(BUILDDIR)/class_keyboardview_handleinput.c.o: class_keyboardview_handleinput.c
 
 $(BUILDDIR)/keyboardview.gadget: $(GADGETOBJS)
 	slink $(GADGETOBJS) lib lib:sc.lib to $@
+# important: the previous version may be still in memory
+# quit any app using the shared gadget, then
+# you have to use command "avail flush" to "expunge" old library/gadget/class.
+	-avail flush
+
 # lib lib:amiga.lib
 # lib $(LIBS)  $(SLO)
 
@@ -101,3 +106,4 @@ $(BUILDDIR)Static/keyboardviewTest_static: $(BUILDDIR)Static $(BUILDDIR)Static/k
 clean:
 	-delete ALL FORCE $(BUILDDIR)
 	-delete ALL FORCE $(BUILDDIR)Static
+	-avail flush

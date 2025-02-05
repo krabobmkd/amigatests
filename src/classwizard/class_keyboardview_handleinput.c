@@ -19,71 +19,35 @@
 
 #include <utility/tagitem.h>
 
-ULONG KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...);
-
-ULONG KeyboardView_Notify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags)
+// ULONG KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...);
+ULONG KeyboardView_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	*GInfo)
 {
-  KeyboardView *gdata;
+    struct opUpdate notifymsg;
+    KeyboardView *gdata=INST_DATA(C, Gad);
+    ULONG tags[]={
+        GA_ID,0,
+        KEYBOARDVIEW_CenterX,0,
+        KEYBOARDVIEW_CenterY,0,
+        TAG_DONE
+    };
 
-  gdata=INST_DATA(C, Gad);
+    tags[1] = Gad->GadgetID;
+    tags[3] = (LONG)gdata->_circleCenterX;
+    tags[5] = (LONG)gdata->_circleCenterY;
+    notifymsg.MethodID = OM_NOTIFY;
+    notifymsg.opu_AttrList = (struct TagItem *)&tags[0];
+    notifymsg.opu_GInfo = GInfo; // "always there for gadget, in all messages"
+    notifymsg.opu_Flags = 0;
+    return DoSuperMethodA(C,(APTR)Gad,(Msg)&notifymsg );
 
-  return(KeyboardView_DoNotify(C, Gad, M, Flags,
-                      GA_ID,                            Gad->GadgetID,
-//                      TCPALETTE_NumColors,              gdata->Pens,
-//                      TCPALETTE_SelectedColor,          gdata->ActivePen,
-//                      TCPALETTE_SelectedLRGB,           PACKRGB(gdata->Palette[gdata->ActivePen]),
-//                      TCPALETTE_SelectedRGB,            &gdata->Palette[gdata->ActivePen],
-//                      TCPALETTE_SelectedRed,            gdata->Palette[gdata->ActivePen].R>>(32-gdata->Precision),
-//                      TCPALETTE_SelectedGreen,          gdata->Palette[gdata->ActivePen].G>>(32-gdata->Precision),
-//                      TCPALETTE_SelectedBlue,           gdata->Palette[gdata->ActivePen].B>>(32-gdata->Precision),
-//                      TCPALETTE_EditMode,               gdata->EditMode,
-//                      TCPALETTE_NoUndo,                 (gdata->UndoLength?0:1),
-                      TAG_DONE));
 }
-/*
-ULONG KeyboardView_NotifyUndo(Class *C, struct Gadget *Gad, Msg M, ULONG Flags)
-{
-  KeyboardView *gdata;
-
-  gdata=INST_DATA(C, Gad);
-
-  return(i_DoNotify(C, Gad, M, Flags,
-                      GA_ID,                            Gad->GadgetID,
-                      TCPALETTE_NoUndo,                 (gdata->UndoLength?0:1),
-                      TAG_DONE));
-}
-*/
-
-
-ULONG KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...)
-{
-  ULONG res;
-  KeyboardView *gdata;
-
-  gdata=INST_DATA(C, Gad);
-
-// grep -ir opu_GInfo
-// ULONG SuperNotifyA(Class *CL, Object *O, struct opUpdate *M, struct TagItem *TagList)
-//   return(DoSuperMethod(CL,O,OM_NOTIFY, TagList, M->opu_GInfo, ((M->MethodID == OM_UPDATE)?(M->opu_Flags): 0)));
-
-// boopsi_GetGInfo(M) doesnt exist -> it's opSet->ops_GInfo
-
-  res = DoSuperMethod(C,(APTR)Gad,OM_NOTIFY, &Tags ); //  boopsi_GetGInfo(M), Flags)
-
-  return(res);
-}
-
-
-
-//ULONG pr_Mix(ULONG A,ULONG B, float Percent);
 
 #define MRK_BUFFER_SIZE 3
 
 ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
 {
   ULONG retval=GMR_MEACTIVE; //default
-  char buffer[MRK_BUFFER_SIZE];
-//  LONG  key;
+
   KeyboardView *gdata;
   struct InputEvent *ie;
 
@@ -315,35 +279,42 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
             break;
 
           case SELECTDOWN:
-
-
-             if ( ((Input->gpi_Mouse).X < 0) ||
+            // actually receive all clics on the whole WB !!
+             if ( (((Input->gpi_Mouse).X < 0) ||
                  ((Input->gpi_Mouse).X >= Gad->Width) ||
                  ((Input->gpi_Mouse).Y < 0) ||
-                 ((Input->gpi_Mouse).Y >= Gad->Height) )
-            {// outside gadget
+                 ((Input->gpi_Mouse).Y >= Gad->Height))
+                  )
+            {// outside gadget or disabled.
 
               if(gdata->_EditMode)
               {
                 gdata->_EditMode=0;
                 KeyboardView_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-                KeyboardView_Notify(C,Gad,(APTR)Input, 0);
               }
 //              retval = GMR_NOREUSE | GMR_VERIFY;
               retval = GMR_REUSE;
             }
-            else
+            else if(gdata->_disabled==0)
             {
+            LONG cx = gdata->_circleCenterX;
+            LONG cy = gdata->_circleCenterY;
+
             // mouse click inside gadget !
             // recenter circle proportionaly.
             if(Gad->Width>0)
-                gdata->_circleCenterX = ((Input->gpi_Mouse).X <<16)/Gad->Width;
+                cx = ((Input->gpi_Mouse).X <<16)/Gad->Width;
             if(Gad->Height>0)
-                gdata->_circleCenterY = ((Input->gpi_Mouse).Y <<16)/Gad->Height;
+                cy = ((Input->gpi_Mouse).Y <<16)/Gad->Height;
 
               gdata->_MouseMode=1;
-              KeyboardView_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-              KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+              SetGadgetAttrs(Gad,Input->gpi_GInfo->gi_Window,NULL,
+                    KEYBOARDVIEW_CenterX,cx,
+                    KEYBOARDVIEW_CenterY,cy,
+                    TAG_END
+                );
+              //KeyboardView_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
+
               retval = GMR_MEACTIVE;
             }
             break;
@@ -372,9 +343,14 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
       break;
   } // end of ieclass switch
 
+    // if(notifCoords)
+    // {
+    //     KeyboardView_NotifyCoords(C,Gad,Input->gpi_GInfo);
+    // }
+
   if(retval!=GMR_MEACTIVE)
   {
-    KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+    //KeyboardView_Notify(C,Gad,(APTR)Input, 0);
   }
 
   return(retval);

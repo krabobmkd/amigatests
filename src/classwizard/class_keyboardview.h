@@ -13,7 +13,7 @@
 #define KeyboardView_SUPERCLASS_ID "gadgetclass"
 
 #ifdef KEYBOARDVIEW_STATICLINK
-    extern void KeyboardView_static_class_init();
+    extern int KeyboardView_static_class_init();
     extern void KeyboardView_static_class_close();
     extern struct IClass   *KeyboardViewClassPtr;
 #else
