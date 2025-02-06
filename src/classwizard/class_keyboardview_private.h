@@ -14,10 +14,12 @@ extern "C" {
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
-#include "graphics/regions.h"
+#include <intuition/imageclass.h>
+#include <graphics/regions.h>
 
 // enable or not some parts of code...
 #define USE_REGION_CLIPPING 1
+#define USE_BEVEL_FRAME 1
 
 /**
 *  this is the internal private gadget struct that own the data of the object instances.
@@ -38,6 +40,9 @@ typedef struct IKeyboardView {
 #ifdef USE_REGION_CLIPPING
     struct Region *_clipRegion;
     int         _updateClipRegion;
+#endif
+#ifdef USE_BEVEL_FRAME
+    struct Image *Bevel;
 #endif
 } KeyboardView;
 

@@ -19,6 +19,11 @@
 #include "class_keyboardview.h"
 #include "class_keyboardview_private.h"
 
+#ifdef USE_BEVEL_FRAME
+    #include <proto/bevel.h>
+    #include <images/bevel.h>
+#endif
+
 /** WATCH OUT ! boopsi docs says:
 *  "the rkmmodelclass dispatcher must be able to run on Intuition's context,
 *  which puts some limitations on what the dispatcher is permitted to do:
@@ -51,6 +56,12 @@ ULONG ASM SAVEDS KeyboardView_Dispatcher(
 
 #ifdef USE_REGION_CLIPPING
     gdata->_clipRegion = NewRegion();
+#endif
+#ifdef USE_BEVEL_FRAME
+          gdata->Bevel= NewObject(BEVEL_GetClass(),NULL,
+              BEVEL_Style, BVS_BUTTON,
+              BEVEL_FillPen, -1,
+              TAG_END);
 #endif
 
  //   Printf("instance:%lx\n",(int)gdata);
@@ -88,14 +99,12 @@ ULONG ASM SAVEDS KeyboardView_Dispatcher(
      break;
 
     case OM_DISPOSE:
-#ifdef USE_REGION_CLIPPING
-    if(gdata->_clipRegion) DisposeRegion(gdata->_clipRegion);
-     //gdata->_clipRegion = NULL;
-#endif
-  //  Printf("kbd OM_DISPOSE\n");
-      /*DisposeObject(gdata->Pattern);
-      DisposeObject(gdata->Bevel);
-      */
+    #ifdef USE_BEVEL_FRAME
+        if(gdata->Bevel) DisposeObject(gdata->Bevel);
+    #endif
+    #ifdef USE_REGION_CLIPPING
+        if(gdata->_clipRegion) DisposeRegion(gdata->_clipRegion);
+    #endif
       retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
       break;
 
@@ -116,8 +125,7 @@ ULONG ASM SAVEDS KeyboardView_Dispatcher(
       break;
 
     case GM_LAYOUT:
-      retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
-      if(retval) retval= KeyboardView_Layout(C,Gad,(struct gpLayout *)M);
+      retval= KeyboardView_Layout(C,Gad,(struct gpLayout *)M);
       break;
 
     case GM_RENDER:

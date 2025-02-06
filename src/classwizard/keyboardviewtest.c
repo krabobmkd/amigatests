@@ -205,16 +205,16 @@ ULONG ASM SAVEDS AppModelDispatch(
                         GA_Text,(ULONG)"X: %ld Y: %ld", // in amiga API %d is for short and %ld for longs.
                         BUTTON_VarArgs,(ULONG) &centerXY[0],
                         TAG_END);
-
-                   // RethinkLayout((struct Gadget *)app->bottombarlayout,app->win,NULL,TRUE);
-
                 }
                 retval = 1;
             } else if(sender_ID == GAD_DISABLECHECKBOX)
-            {
-                ULONG v;
-                GetAttr(GA_SELECTED, app->disablecheckbox, &v);
-                SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,v,TAG_END);
+            {   // also works, but would be activated for all attribs sent:
+                //ULONG v;
+                //GetAttr(GA_SELECTED, app->disablecheckbox, &v);
+                if((ptag = FindTagItem( GA_SELECTED,M->opUpdate.opu_AttrList ))!=NULL)
+                {   // checkbox sent new Disable value.
+                    SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,ptag->ti_Data,TAG_END);
+                }
             }
             else // if ...other receive mamangement... else
             {

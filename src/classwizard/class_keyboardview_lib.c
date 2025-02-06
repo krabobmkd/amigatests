@@ -17,6 +17,10 @@
 
 #include "class_keyboardview_private.h"
 
+#ifdef USE_BEVEL_FRAME
+    #include <proto/bevel.h>
+#endif
+
 typedef ULONG (*REHOOKFUNC)();
 
 #ifdef KEYBOARDVIEW_STATICLINK
@@ -32,7 +36,9 @@ struct Library        *LayersBase=NULL;
 struct DosLibrary     *DOSBase=NULL;
 struct Library        *UtilityBase=NULL;
 #endif
-
+#ifdef USE_BEVEL_FRAME
+struct Library        *BevelBase=NULL;
+#endif
 // this is the only global writtable we should see in the whole class binary !
 struct IClass   *KeyboardViewClassPtr=NULL;
 // this 2 strings are also linked to the asm startup header ( in .gadget mode)
@@ -70,7 +76,22 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
     }
 
 #endif
+BOOL KeyboardView_OpenLibs_Dependencies(void)
+{
+#ifdef USE_BEVEL_FRAME
+    if(!BevelBase) BevelBase = OpenLibrary("images/bevel.image",44);
+    if(!BevelBase) return FALSE;
+#endif
+    return TRUE;
+}
 
+void KeyboardView_CloseLibs_Dependencies(void)
+{
+#ifdef USE_BEVEL_FRAME
+    if(BevelBase) CloseLibrary(BevelBase);
+    BevelBase = NULL;
+#endif
+}
 //==========================================================================================
 // does not need to be exact, we just want the function pointer:
 ULONG ASM SAVEDS KeyboardView_Dispatcher(
@@ -84,7 +105,7 @@ ULONG ASM SAVEDS KeyboardView_Dispatcher(
 int ASM KeyboardView_CreateClass(REG(a6,struct ExtClassLib *LibBase))
 {
   if(LibBase) SysBase = LibBase->cb_SysBase;
-  if(KeyboardView_OpenLibs())
+  if(KeyboardView_OpenLibs() && KeyboardView_OpenLibs_Dependencies())
   {
     if(KeyboardViewClassPtr=MakeClass(KeyboardView_CLASS_ID,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
     {
@@ -96,6 +117,7 @@ int ASM KeyboardView_CreateClass(REG(a6,struct ExtClassLib *LibBase))
       /* Success */
       return(0);
     }
+    KeyboardView_CloseLibs_Dependencies();
     KeyboardView_CloseLibs();
   }
   /* Fail */
@@ -111,7 +133,7 @@ void ASM KeyboardView_DestroyClass(REG(a6,struct ExtClassLib *LibBase))
       FreeClass(KeyboardViewClassPtr);
       KeyboardViewClassPtr = NULL;
     }
-
+  KeyboardView_CloseLibs_Dependencies();
   KeyboardView_CloseLibs();
 }
 // end if shared class
@@ -124,6 +146,7 @@ void ASM KeyboardView_DestroyClass(REG(a6,struct ExtClassLib *LibBase))
 // just use this one once when static link
 int KeyboardView_static_class_init()
 { 
+   if(!KeyboardView_OpenLibs_Dependencies()) return 1;
     if(KeyboardViewClassPtr=MakeClass(NULL,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
     {
       KeyboardViewClassPtr->cl_Dispatcher.h_Entry=(REHOOKFUNC)KeyboardView_Dispatcher;
@@ -136,6 +159,7 @@ int KeyboardView_static_class_init()
 
 void KeyboardView_static_class_close()
 {
+    KeyboardView_CloseLibs_Dependencies();
     if(KeyboardViewClassPtr)
     {
       FreeClass(KeyboardViewClassPtr);

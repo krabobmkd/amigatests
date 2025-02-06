@@ -16,11 +16,17 @@
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
+#include <utility/tagitem.h>
 
 #include "class_keyboardview.h"
 #include "class_keyboardview_private.h"
 
-#include <utility/tagitem.h>
+#ifdef USE_BEVEL_FRAME
+    #include <proto/bevel.h>
+    #include <images/bevel.h>
+#endif
+
+
 
 /* The GM_DOMAIN method is used to obtain the sizing requirements of an
  * object for a class before ever creating an object. */
@@ -101,98 +107,26 @@ ULONG KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
 //    WORD height =Gad->Height;
     gdata=INST_DATA(C, Gad);
     gdata->_updateClipRegion = 1;
-//  float cfloat,aspect;
-//    Printf("KeyboardView_Layout: %ld %ld\n",(int)Gad->Width,(int)Gad->Height);
-//    Printf("left: %ld top: %ld width: %ld heigt: %ld\n",
-//    (int)Gad->LeftEdge,(int)Gad->TopEdge,(int)Gad->Width,(int)Gad->Height);
 
-
-
-//  DKP("GM_LAYOUT\n");
-// GadgetInfo
+#ifdef USE_BEVEL_FRAME
+    if(gdata->Bevel)
+    {
+        SetAttrs((Object *)gdata->Bevel,
+            IA_Left, Gad->LeftEdge,
+            IA_Top,        Gad->TopEdge,
+            IA_Width,      Gad->Width,
+            IA_Height,     Gad->Height,
+            BEVEL_ColorMap,(ULONG)layout->gpl_GInfo->gi_Screen->ViewPort.ColorMap,
+            TAG_DONE);
+    }
+#endif
 /*
-  SetAttrs(gdata->Bevel, IA_Left,       Gad->LeftEdge,
-                         IA_Top,        Gad->TopEdge,
-                         IA_Width,      Gad->Width,
-                         IA_Height,     Gad->Height,
-                         BEVEL_ColorMap,layout->gpl_GInfo->gi_Screen->ViewPort.ColorMap,
-                         TAG_DONE);
-
   GetAttr(BEVEL_InnerTop,     gdata->Bevel, &topedge);
   GetAttr(BEVEL_InnerLeft,    gdata->Bevel, &leftedge);
   GetAttr(BEVEL_InnerWidth,   gdata->Bevel, &width);
   GetAttr(BEVEL_InnerHeight,  gdata->Bevel, &height);
 */
-/*
-  if(width>0 && height>0)
-  {
-    aspect=((float)height / (float)width);
 
-    if(aspect<1)
-    {
-      aspect=((float)width / (float)height);
-      swap=1;
-    }
-
-//    DKP("  aspect %ld\n",(ULONG)(aspect*1000));
-
-    rows=sqrt(gdata->Pens * aspect) + .5;
-
-    if(rows<1) rows=1;
-    if(rows>gdata->Pens) rows=gdata->Pens;
-
-//    DKP("  rows=%ld\n",rows);
-
-    cfloat=gdata->Pens / rows;
-    cols=cfloat;
-
-    while(rows>1 && (cfloat * rows)!=gdata->Pens)
-    {
-      rows--;
-      cfloat=gdata->Pens / rows;
-      cols=cfloat;
-//      DKP("   testing - rows %ld cfloat %lf cols=%ld\n",rows, cfloat, cols);
-    }
-
-//    DKP("  cols=%ld\n",cols);
-
-    if(swap)
-    {
-      gdata->Rows = cols;
-      gdata->Cols = rows;
-
-      rows=gdata->Rows;
-      cols=gdata->Cols;
-    }
-    else
-    {
-      gdata->Rows = rows;
-      gdata->Cols = cols;
-    }
-
-    for(l=0;l<=rows;l++)
-    {
-      gdata->Row[l]=(LONG)height * l / (rows) + topedge;
-    }
-
-    for(l=0;l<=cols;l++)
-    {
-      gdata->Col[l]=(LONG)width * l / (cols)  + leftedge;
-    }
-  }
-  else
-  {
-    gdata->Rows=gdata->Cols=0;
-  }
-  if(layout->gpl_Initial)
-  {
-    KeyboardView_Notify(C,Gad,layout,0);
-  }
-*/
-//  if(layout->gpl_Initial)
-//  {
-//    KeyboardView_Notify(C,Gad,layout,0);
-//  }
   return(1);
 }
 
@@ -227,6 +161,7 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
       WORD width  =Gad->Width;
       WORD height =Gad->Height;
 
+
     if(Gad->Flags & GFLG_DISABLED) // if disabled, draw background with another color.
     {
         penbg = 0;
@@ -250,6 +185,10 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
     }
     oldClipRegion = InstallClipRegion( rp->Layer, gdata->_clipRegion);
 #endif
+#ifdef USE_BEVEL_FRAME
+    if(gdata->Bevel) DrawImage(rp,gdata->Bevel,0,0);
+#endif
+
       SetDrMd(rp,JAM1);
       SetAPen(rp,penbg);
       RectFill(rp,left,
@@ -267,6 +206,9 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
 #ifdef USE_REGION_CLIPPING
     InstallClipRegion( rp->Layer,oldClipRegion); // important to pass NULL if oldClipRegion is NULL.
 #endif
+
+
+
     if (Render->MethodID != GM_RENDER)
       ReleaseGIRPort(rp);
   }
