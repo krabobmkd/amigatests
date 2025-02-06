@@ -73,41 +73,15 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
 
 //==========================================================================================
 // does not need to be exact, we just want the function pointer:
-#ifdef __SASC
-extern ULONG __asm __saveds KeyboardView_Dispatcher(
-                    register __a0 struct IClass *C,
-                    register __a2 struct Gadget *Gad,
-                    register __a1 union MsgUnion *M);
-#else
-// GCC
-extern ULONG KeyboardView_Dispatcher(
-                    Class *C  __asm("a0"),
-                    struct Gadget *Gad  __asm("a2"),
-                    Msgs M  __asm("a1")
-                    );
-#endif
-
-#ifdef __SASC
-extern ULONG __asm __saveds KeyboardView_Dispatcher(
-                    register __a0 struct IClass *C,
-                    register __a2 struct Gadget *Gad,
-                    register __a1 union MsgUnion *M);
-#else
-// GCC
-extern ULONG KeyboardView_Dispatcher(
-                    Class *C  __asm("a0"),
-                    struct Gadget *Gad  __asm("a2"),
-                    Msgs M  __asm("a1")
-                    );
-#endif
+ULONG ASM SAVEDS KeyboardView_Dispatcher(
+                    REG(a0,struct IClass *C),
+                    REG(a2,struct Gadget *Gad),
+                    REG(a1,union MsgUnion *M));
 
 #ifndef KEYBOARDVIEW_STATICLINK
 // called by shared Lib init to create class.
-#ifdef __SASC
-int __asm KeyboardView_CreateClass(register __a6 struct ExtClassLib *LibBase )
-#else
-int KeyboardView_CreateClass(struct ExtClassLib *LibBase  __asm("a6") )
-#endif
+
+int ASM KeyboardView_CreateClass(REG(a6,struct ExtClassLib *LibBase))
 {
   if(LibBase) SysBase = LibBase->cb_SysBase;
   if(KeyboardView_OpenLibs())
@@ -128,11 +102,7 @@ int KeyboardView_CreateClass(struct ExtClassLib *LibBase  __asm("a6") )
   return(-1);
 }
 // called by shared Lib expunge to dispose class.
-#ifdef __SASC
-void __asm KeyboardView_DestroyClass(register __a6 struct ExtClassLib *LibBase )
-#else
-void KeyboardView_DestroyClass(struct ExtClassLib *LibBase  __asm("a6") )
-#endif
+void ASM KeyboardView_DestroyClass(REG(a6,struct ExtClassLib *LibBase))
 {
     // note LibBase and KeyboardViewClassPtr should be the same
     if(KeyboardViewClassPtr)

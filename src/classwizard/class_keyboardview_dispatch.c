@@ -10,7 +10,7 @@
     // GCC
     #include "minialib.h"
 #endif
-
+#include <proto/dos.h>
 //#include <proto/utility.h>
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
@@ -25,23 +25,10 @@
 *  it can't use dos.library, it can't wait on application signals or message ports
 * and it can't call any Intuition functions which might wait on Intuition."
 */
-
-#ifdef __SASC
-ULONG __asm __saveds KeyboardView_Dispatcher(
-                    register __a0 struct IClass *C,
-                    register __a2 struct Gadget *Gad,
-                    register __a1 union MsgUnion *M)
-#else
-#ifdef __GNUC__
-ULONG KeyboardView_Dispatcher(
-                    Class *C  __asm("a0"),
-                    struct Gadget *Gad  __asm("a2"),
-                    Msgs M  __asm("a1")
-                    )
-#else
- need SASC or GCC
-#endif
-#endif
+ULONG ASM SAVEDS KeyboardView_Dispatcher(
+                    REG(a0,struct IClass *C),
+                    REG(a2,struct Gadget *Gad),
+                    REG(a1,union MsgUnion *M))
 {
   KeyboardView *gdata;
   ULONG retval=0;
@@ -91,6 +78,7 @@ ULONG KeyboardView_Dispatcher(
 
     case OM_UPDATE:
     case OM_SET:
+       // Printf("OM_SET: GadgetID:%ld gad:%lx\n",(int)Gad->GadgetID,(int)Gad);
       retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
       KeyboardView_SetAttrs(C,Gad,(struct opSet *)M);
      break;

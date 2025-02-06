@@ -40,19 +40,7 @@ ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
     case KEYBOARDVIEW_CenterY:
         *data = (LONG)gdata->_circleCenterY;
     break;
-    // super class gadget things
-    case GA_Disabled:
-        *data = (LONG)gdata->_disabled;
-        DoSuperCall = 1;
-    break;
-    case GA_Highlight:
-        *data = (LONG)gdata->_highlighted;
-        DoSuperCall = 1;
-    break;
-    case GA_Selected:
-        *data = (LONG)gdata->_selected;
-        DoSuperCall = 1;
-    break;
+    // super class gadget things. would manage attribs selected/hightlighted, ...
     default:
         DoSuperCall = 1;
       // everything we don't manage directly is managed by supercall.
@@ -69,7 +57,7 @@ ULONG Redraw[]={0, GREDRAW_UPDATE, GREDRAW_REDRAW};
 ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
 {
   struct TagItem *tag;
-  ULONG retval=0,data;
+  ULONG data; // for SetAttribs, retval means if anything needed redraw.
   KeyboardView *gdata;
   ULONG redraw=0, update=0, notifCoords=0;
 
@@ -90,7 +78,6 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
         if((UWORD)data != gdata->_circleCenterX )
         {
             gdata->_circleCenterX = (UWORD)data ;
-            //update=1;
             redraw=1;
             notifCoords = 1;
         }
@@ -99,26 +86,38 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
         if((UWORD)data != gdata->_circleCenterY )
         {
             gdata->_circleCenterY = (UWORD)data ;
-            //update=1;
+
             redraw=1;
             notifCoords = 1;
         }
         break;
-     // - - - actually we have to manage these super class attribs:
+     // - - - actually we have to manage super class attribs:
+     // with GA_XXX and struct Gadget members...
+     // is there  a way to super call this ? DoSuperMethodA() deosn't seems to manage these attribs.
       case GA_Disabled:
-        gdata->_disabled = (UBYTE)data;
-        redraw=1;
+        {
+            if(data) Gad->Flags |= GFLG_DISABLED; // set bit
+            else Gad->Flags &= ~GFLG_DISABLED; // remove bit.
+            redraw=1;
+        }
         break;
       case GA_Highlight:
-        gdata->_highlighted = (UBYTE)data;
-        redraw=1;
+        {
+            if(data) Gad->Flags |= GFLG_GADGHBOX; // set bit
+            else Gad->Flags &= ~GFLG_GADGHBOX; // remove bit.
+            redraw=1;
+        }
         break;
       case GA_Selected:
-        gdata->_selected = (UBYTE)data;
-        redraw=1;
+        {
+            if(data) Gad->Flags |= GFLG_SELECTED; // set bit
+            else Gad->Flags &= ~GFLG_SELECTED; // remove bit.
+            redraw=1;
+        }
         break;
     default:
-        //note: apparently super call is ont to be managed here (not sure !!!)
+        //does not seems to do anything for gadgets.... DoSuperMethodA(C,(APTR)Gad,(Msg)Set);
+        //note: apparently super call is not to be managed here (not sure !!!)
         break;
 
     } // end switch
@@ -147,7 +146,7 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
     }
   }
 
-  return(retval);
+  return(redraw| update);
 }
 
 

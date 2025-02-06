@@ -1,6 +1,7 @@
 #ifndef _CLASS_KEYBOARDVIEWPRIVATE_H_
 #define _CLASS_KEYBOARDVIEWPRIVATE_H_
 
+#include "compilers.h"
 #include "class_keyboardview.h"
 
 // not much sense because c++ static runtime are hard to link.
@@ -15,26 +16,22 @@ extern "C" {
 #include <intuition/gadgetclass.h>
 #include "graphics/regions.h"
 
+// enable or not some parts of code...
 #define USE_REGION_CLIPPING 1
 
 /**
-*  this is the internal private struct that own the data of the object instances.
+*  this is the internal private gadget struct that own the data of the object instances.
 * an important principle of boopsi is that structure for the class is hidden to the consumers.
-* the consumers will only see the public header, and will do setAtribs()/GetAttribs()/Domethod()
+* the consumers will only see the public header, and will do setAtribs()/GetAttribs()/Domethod().
+* Also: for the same Gadget, superclass members are in struct Gadget * passed to functions.
+* (This are just concatenated structs in a system private way.)
 * DEVTODO: make this class evolve to retain the data needed to draw and interact with your widget.
 */
 typedef struct IKeyboardView {
     // let's say we have coordinates of the center of the circle
     UWORD _circleCenterX,_circleCenterY;
-    // this is a super class (gadget) state managed by
-    // GA_Disabled, GA_Highlight, GA_Selected
-    // default is zero (false)
-    UBYTE   _disabled;
-    UBYTE   _highlighted;
-    UBYTE   _selected;
-    UBYTE   _align;
 
-    // todo: we could manage the mouse interaction current state....
+    // DEVTODO: we could manage the mouse interaction current state....
     ULONG _MouseMode;
     ULONG _EditMode;
 

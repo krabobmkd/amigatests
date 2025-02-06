@@ -5,7 +5,6 @@
  * (This is the file that can be released)
  */
 #include <exec/types.h>
-#include <reaction/reaction.h>
 #include <intuition/gadgetclass.h>
 #include <intuition/classes.h>
 

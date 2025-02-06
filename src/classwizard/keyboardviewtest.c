@@ -21,10 +21,11 @@
     - you change one or more object attributes with SetAttrs()
     - ...except for gadgets, in this case it's SetGadgetAttrs()
         (certainly because of the antique gadtools API if you ask.)
-    - It's GetAttribs() for everyone to get attributes values.
+    - It's GetAttr() for everyone to get attributes values.
     - Definitions for attribs are in their class include down there.
     - All this "Datatype" story is the very same thing.
 
+ https://wiki.amigaos.net/wiki/BOOPSI_-_Object_Oriented_Intuition
 */
 
 
@@ -67,7 +68,7 @@
 #include <proto/label.h>
 #include <images/label.h>
 
-
+#include "compilers.h"
 
 // this is the public definition of the class we test:
 #include "class_keyboardview.h"
@@ -127,7 +128,7 @@ typedef union MsgUnion
  */
 #define GAD_BUTTON_RECENTER 1
 #define GAD_KEYBOARDVIEW_TOTEST 2
-
+#define GAD_DISABLECHECKBOX 3
 // all app related variables are here:
 // also we register that struct as a BOOPSI model,
 // which is useful to receive notifications
@@ -162,15 +163,10 @@ struct Object *AppInstance = NULL;
 // App Modelinstance as our private struct.
 struct App *app=NULL;
 
-#ifdef __SASC
-ULONG __asm __saveds AppDispatch(register __a0 struct IClass *C,register __a2 Object *obj, register __a1 union MsgUnion *M)
-#else
-#ifdef __GNUC__
-ULONG AppDispatch(Class *C  __asm("a0"),Object *obj  __asm("a2"),Msgs M  __asm("a1") )
-#else
- need SASC or GCC
-#endif
-#endif
+ULONG ASM SAVEDS AppModelDispatch(
+                    REG(a0,struct IClass *C),
+                    REG(a2,struct Object *obj),
+                    REG(a1,union MsgUnion *M))
 {
     // Warning: this is executed on "intuition's context", can't use dos nor print, like for interupts.
   ULONG retval=0;
@@ -204,8 +200,8 @@ ULONG AppDispatch(Class *C  __asm("a0"),Object *obj  __asm("a2"),Msgs M  __asm("
 
                 if(app->labelValues)
                 {
-                    // display coords in button as fake label:
-                    SetGadgetAttrs(app->labelValues,app->win,NULL,
+                    // display coords in button label with formatting:
+                    SetGadgetAttrs((struct Gadget *)app->labelValues,app->win,NULL,
                         GA_Text,(ULONG)"X: %ld Y: %ld", // in amiga API %d is for short and %ld for longs.
                         BUTTON_VarArgs,(ULONG) &centerXY[0],
                         TAG_END);
@@ -214,7 +210,13 @@ ULONG AppDispatch(Class *C  __asm("a0"),Object *obj  __asm("a2"),Msgs M  __asm("
 
                 }
                 retval = 1;
-            } else // if ...other receive mamangement... else
+            } else if(sender_ID == GAD_DISABLECHECKBOX)
+            {
+                ULONG v;
+                GetAttr(GA_SELECTED, app->disablecheckbox, &v);
+                SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,v,TAG_END);
+            }
+            else // if ...other receive mamangement... else
             {
                 retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
             }
@@ -233,7 +235,7 @@ int initAppModel(void)
     AppModelClass = MakeClass(NULL,"modelclass",NULL,sizeof(struct App),0);
     if(!AppModelClass) return 0;
 
-    AppModelClass->cl_Dispatcher.h_Entry = (HOOKFUNC) &AppDispatch;
+    AppModelClass->cl_Dispatcher.h_Entry = (HOOKFUNC) &AppModelDispatch;
 
     AppInstance = NewObject( AppModelClass, NULL, TAG_DONE);
     if(!AppInstance) return 0;
@@ -332,6 +334,7 @@ int main(int argc, char **argv)
 #else
         app->kbdview = NewObject(NULL, KeyboardView_CLASS_ID,
 #endif
+        GA_DrawInfo, app->drawInfo,
         GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
         ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
             TAG_END);
@@ -367,18 +370,22 @@ int main(int argc, char **argv)
                         GA_Text,(ULONG)"...",
                     TAG_END);
  {
+    /* ICA_MAP doesnt work and would trash the attribs of the target if it's another gadget...
     struct TagItem attribToAttribMapping[] =
     {
         {GA_SELECTED, GA_DISABLED},
         {TAG_END, }
-    };
+    };*/
 
- app->disablecheckbox = NewObject( CHECKBOX_GetClass(), NULL,
-                        GA_DrawInfo,(ULONG) app->drawInfo,
-                        GA_Text,(ULONG)"Disable",
-                       ICA_TARGET,(ULONG)app->kbdview, // send the state change to this.
-                    //   ICA_MAP,(ULONG)&attribToAttribMapping[0],
-                    TAG_END);
+    app->disablecheckbox = NewObject( CHECKBOX_GetClass(), NULL,
+                    GA_DrawInfo,(ULONG) app->drawInfo,
+                    GA_Text,(ULONG)"Disable",
+                 // tried auto attrib mapping with this, has terrible side effects.
+                 //  ICA_TARGET,(ULONG)app->kbdview, // send the state change to this.
+                 //  ICA_MAP,(ULONG)&attribToAttribMapping[0],
+                 GA_ID,GAD_DISABLECHECKBOX,
+                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                TAG_END);
  }
     if(!app->disablecheckbox) cleanexit("Can't create checkbox");
 
@@ -422,7 +429,7 @@ int main(int argc, char **argv)
         WA_Left, 0,
         WA_Top, app->lockedscreen->Font->ta_YSize + 3,
         WA_CustomScreen, app->lockedscreen,
-        WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_VANILLAKEY, // we want localized keys , not the raws.
+        WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY /*| IDCMP_VANILLAKEY*/, // we want localized keys , not the raws.
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
         WA_Title, "KeyboardView Test",
         WINDOW_ParentGroup, app->mainlayout,
@@ -432,9 +439,6 @@ int main(int argc, char **argv)
         WINDOW_AppPort, app->app_port,
     TAG_END);
     if(!app->window_obj) cleanexit("can't create window");
-
-
-// https://wiki.amigaos.net/wiki/BOOPSI_-_Object_Oriented_Intuition
 
     /*  Open the window. */
     app->win = reaction_OpenWindow(app->window_obj);
@@ -467,8 +471,6 @@ int main(int argc, char **argv)
                         // quit on "esc down" key.
                         if((result & WMHI_KEYMASK) == 0x45) ok = FALSE;
                         break;
-                    case WMHI_VANILLAKEY: //  we also want localized key codes
-                        break;
                     case WMHI_CLOSEWINDOW:
                         // quit on window close gadget
                         ok = FALSE;
@@ -481,7 +483,7 @@ int main(int argc, char **argv)
                                 // does the button action.
                                 // change attributes of the gadget we created:
                                 // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
-                                SetGadgetAttrs(app->kbdview,app->win,NULL,
+                                SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL,
                                     KEYBOARDVIEW_CenterX, 32768,
                                     KEYBOARDVIEW_CenterY, 32768,
                                     TAG_DONE);

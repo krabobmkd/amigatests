@@ -10,6 +10,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(VERSTRING "1.0")
 
 add_executable(KeyboardViewTest_static
+		compilers.h
 		reactioninlines.h
 		keyboardviewtest.c
 		class_keyboardview.h
@@ -28,7 +29,7 @@ install(TARGETS KeyboardViewTest_static DESTINATION "${CMAKE_SOURCE_DIR}/..")
 
 # binary class version -- should be a "add_library( SHARED..."
 add_executable(keyboardview.gadget
-		reactioninlines.h
+		compilers.h
 		minialib.h
 		class_keyboardview.h
 		class_keyboardview_private.h
@@ -54,6 +55,7 @@ target_compile_definitions(keyboardview.gadget PRIVATE PRIVATE VERSION_STRING="$
 
 # exe that consume the .class
 add_executable(KeyboardViewTest
+		compilers.h
 		reactioninlines.h
 		keyboardviewtest.c
 		class_keyboardview.h

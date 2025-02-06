@@ -227,7 +227,7 @@ ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render,
       WORD width  =Gad->Width;
       WORD height =Gad->Height;
 
-    if(gdata->_disabled)
+    if(Gad->Flags & GFLG_DISABLED) // if disabled, draw background with another color.
     {
         penbg = 0;
     }

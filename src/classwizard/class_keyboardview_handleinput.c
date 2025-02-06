@@ -295,7 +295,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
 //              retval = GMR_NOREUSE | GMR_VERIFY;
               retval = GMR_REUSE;
             }
-            else if(gdata->_disabled==0)
+            else if((Gad->Flags & GFLG_DISABLED)==0) // don't manage clicks if disabled.
             {
             LONG cx = gdata->_circleCenterX;
             LONG cy = gdata->_circleCenterY;
