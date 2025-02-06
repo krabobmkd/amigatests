@@ -15,6 +15,7 @@ extern "C" {
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
 #include <intuition/imageclass.h>
+#include <graphics/gfx.h>
 #include <graphics/regions.h>
 
 // enable or not some parts of code...
@@ -37,13 +38,14 @@ typedef struct IKeyboardView {
     ULONG _MouseMode;
     ULONG _EditMode;
 
+    struct Rectangle _framerec;
 #ifdef USE_REGION_CLIPPING
     struct Region *_clipRegion;
-    int         _updateClipRegion;
 #endif
 #ifdef USE_BEVEL_FRAME
     struct Image *Bevel;
 #endif
+
 } KeyboardView;
 
 ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);

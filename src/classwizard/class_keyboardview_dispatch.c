@@ -59,9 +59,9 @@ ULONG ASM SAVEDS KeyboardView_Dispatcher(
 #endif
 #ifdef USE_BEVEL_FRAME
           gdata->Bevel= NewObject(BEVEL_GetClass(),NULL,
-              BEVEL_Style, BVS_BUTTON,
-              BEVEL_FillPen, -1,
-              TAG_END);
+            BEVEL_Style, BVS_BUTTON,
+            BEVEL_FillPen, -1,
+            TAG_END);
 #endif
 
  //   Printf("instance:%lx\n",(int)gdata);
