@@ -77,6 +77,8 @@
 // are not modern GCC compatible.
 #include "reactioninlines.h"
 
+typedef ULONG (*REHOOKFUNC)();
+
 // DOSBase is already opened by C startup...
 // struct DosLibrary *DOSBase=NULL;
 struct IntuitionBase *IntuitionBase=NULL;
@@ -235,7 +237,7 @@ int initAppModel(void)
     AppModelClass = MakeClass(NULL,"modelclass",NULL,sizeof(struct App),0);
     if(!AppModelClass) return 0;
 
-    AppModelClass->cl_Dispatcher.h_Entry = (HOOKFUNC) &AppModelDispatch;
+    AppModelClass->cl_Dispatcher.h_Entry = (REHOOKFUNC) &AppModelDispatch;
 
     AppInstance = NewObject( AppModelClass, NULL, TAG_DONE);
     if(!AppInstance) return 0;
@@ -317,7 +319,7 @@ int main(int argc, char **argv)
     app->fontHeight = 8+4; // default;
     if(app->drawInfo && app->drawInfo->dri_Font) app->fontHeight =app->drawInfo->dri_Font->tf_YSize + 4;
 
-    app->testbt = NewObject( NULL, "button.gadget",
+    app->testbt = (Object *)NewObject( NULL, "button.gadget",
                                     GA_DrawInfo, app->drawInfo,
                               //      GA_TextAttr, &garnet16,
                                     GA_ID,GAD_BUTTON_RECENTER,
@@ -331,17 +333,22 @@ int main(int argc, char **argv)
 
 #ifdef KEYBOARDVIEW_STATICLINK
         app->kbdview = NewObject(KeyboardViewClassPtr, NULL,
+            GA_DrawInfo, app->drawInfo,
+            GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
+            ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                TAG_END);
 #else
         app->kbdview = NewObject(NULL, KeyboardView_CLASS_ID,
+            GA_DrawInfo, app->drawInfo,
+            GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
+            ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                TAG_END);
 #endif
-        GA_DrawInfo, app->drawInfo,
-        GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
-        ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-            TAG_END);
+
 
     if(!app->kbdview) cleanexit("Can't create kbdview");
 
-    app->horizontallayout = NewObject( LAYOUT_GetClass(), NULL,
+    app->horizontallayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
                 LAYOUT_EvenSize, TRUE,
                 LAYOUT_HorizAlignment, LALIGN_RIGHT,
@@ -354,7 +361,7 @@ int main(int argc, char **argv)
 
 
 
- app->label1 = NewObject( LABEL_GetClass(), NULL,
+ app->label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
                         LABEL_DrawInfo, app->drawInfo,
                         //IA_Font, &helvetica15bu,
                         //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
@@ -362,7 +369,7 @@ int main(int argc, char **argv)
                         LABEL_Text,(ULONG)"Values:",
                     TAG_END);
 
- app->labelValues = NewObject( NULL, "button.gadget",
+ app->labelValues = (Object *)NewObject( NULL, "button.gadget",
                         GA_DrawInfo,(ULONG) app->drawInfo,
                         BUTTON_BevelStyle,BVS_NONE,
                         BUTTON_Transparent, TRUE,
@@ -377,7 +384,7 @@ int main(int argc, char **argv)
         {TAG_END, }
     };*/
 
-    app->disablecheckbox = NewObject( CHECKBOX_GetClass(), NULL,
+    app->disablecheckbox = (Object *)NewObject( CHECKBOX_GetClass(), NULL,
                     GA_DrawInfo,(ULONG) app->drawInfo,
                     GA_Text,(ULONG)"Disable",
                  // tried auto attrib mapping with this, has terrible side effects.
@@ -390,7 +397,7 @@ int main(int argc, char **argv)
     if(!app->disablecheckbox) cleanexit("Can't create checkbox");
 
     app->bottombarlayout =
-         NewObject( LAYOUT_GetClass(), NULL,
+         (Object *)NewObject( LAYOUT_GetClass(), NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
                 LAYOUT_EvenSize, TRUE,
                 LAYOUT_HorizAlignment, LALIGN_RIGHT,
@@ -407,7 +414,7 @@ int main(int argc, char **argv)
 
     {
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);
-        app->mainlayout = NewObject( LAYOUT_GetClass(), NULL,
+        app->mainlayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
             GA_DrawInfo, app->drawInfo,
             LAYOUT_DeferLayout, TRUE, /* Layout refreshes done on task's context (by thewindow class) */
             LAYOUT_SpaceOuter, TRUE,
@@ -425,7 +432,7 @@ int main(int argc, char **argv)
     app->app_port = CreateMsgPort();
 
     /* Create the window object. */
-    app->window_obj = NewObject( WINDOW_GetClass(), NULL,
+    app->window_obj = (Object *)NewObject( WINDOW_GetClass(), NULL,
         WA_Left, 0,
         WA_Top, app->lockedscreen->Font->ta_YSize + 3,
         WA_CustomScreen, app->lockedscreen,

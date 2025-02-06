@@ -27,8 +27,8 @@ extern "C" {
 * an important principle of boopsi is that structure for the class is hidden to the consumers.
 * the consumers will only see the public header, and will do setAtribs()/GetAttribs()/Domethod().
 * Also: for the same Gadget, superclass members are in struct Gadget * passed to functions.
-* (This are just concatenated structs in a system private way.)
-* DEVTODO: make this class evolve to retain the data needed to draw and interact with your widget.
+* (These are just concatenated structs in a system private way.)
+* DEVTODO: make this class evolve to retain the data needed to draw and interact with your gadget.
 */
 typedef struct IKeyboardView {
     // let's say we have coordinates of the center of the circle
@@ -75,6 +75,11 @@ typedef union MsgUnion
   struct gpLayout     gpLayout;
 } *Msgs;
 
+/**
+* This is to publish ou data when they change.
+* It may be better to just notify what change and have many notify functions per theme.
+* Some examples use only one Notify which send all attribs.
+*/
 ULONG KeyboardView_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	*GInfo);
 
 /** this is the struct that is the extended struct Library
@@ -83,8 +88,8 @@ ULONG KeyboardView_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	
  * which themselves only manages registering the class with MakeClass()/AddClass()
  * versioning, and closing itself. This is *not* the boopsi class definition which is up there.
  * So it doesnt have to evolve, and can keep same name for each projects.
- *
- * must correspond to equivalent in classinit.s
+ * That said, layout.gadget has tool methods like any library.
+ * must be mirrored to equivalent in classinit.s
  */
 struct ExtClassLib
 {

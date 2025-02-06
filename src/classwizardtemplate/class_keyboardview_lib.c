@@ -35,7 +35,11 @@ struct IntuitionBase  *IntuitionBase=NULL;
 struct Library        *LayersBase=NULL;
 struct DosLibrary     *DOSBase=NULL;
 struct Library        *UtilityBase=NULL;
+    #if defined(__GNUC__) && (__GNUC__ < 3)
+        struct Library        *__UtilityBase=NULL; // amiga gcc2.95 with noixemul and 68000, and our gadget startup needs that.
+    #endif
 #endif
+
 #ifdef USE_BEVEL_FRAME
 struct Library        *BevelBase=NULL;
 #endif
@@ -62,7 +66,9 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
        if(!GfxBase) GfxBase = (struct GfxBase *) OpenLibrary("graphics.library",39);
        if(!UtilityBase) UtilityBase = OpenLibrary("utility.library",39);
        if(!LayersBase) LayersBase = OpenLibrary("layers.library",39);
-
+    #if defined(__GNUC__) && (__GNUC__ < 3)
+        __UtilityBase = UtilityBase; // amiga gcc2.95 with noixemul and 68000, and our gadget startup needs that.
+    #endif
         return TRUE;
     }
 

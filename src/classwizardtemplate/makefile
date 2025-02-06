@@ -1,5 +1,6 @@
 # this is the makefile for all Amiga GCC2.5 (GeekGadget based)
 # like ADE on aminet.
+# Update os-include and os-lib with NDK3.2 include and lib.
 # use with command "make"
 
 CC = gcc
@@ -8,10 +9,12 @@ BUILDLIBDIR = build-gcc/libobjs
 BUILDEXEDIR = build-gcc/exeobjs
 
 ASMFLAGS = I=include: 
-# CFLAGS = -noixemul -m68020 -ffreestanding -nostartfiles
+CFLAGS = -m68000 -Os -noixemul
 
-BINARIES = $(BUILDDIR)/keyboardview.gadget $(BUILDDIR)/keyboardviewTest
-#  $(BUILDDIR)Static/keyboardviewTest_static
+BINARIES = \
+ $(BUILDDIR)/keyboardview.gadget\
+ $(BUILDDIR)/keyboardviewTest\
+ $(BUILDDIR)Static/keyboardviewTest_static
 
 HEADERS = class_keyboardview.h class_keyboardview_private.h  minialib.h
 
@@ -49,36 +52,36 @@ $(BUILDDIR)Static:
 # - - - - - - - - 
 
 $(BUILDLIBDIR)/%.c.o: %.c $(BUILDLIBDIR) $(HEADERS)
-	$(CC) -c -o $@ $<  -noixemul -m68020 -ffreestanding -nostartfiles
+	$(CC) -c -o $@ $< $(CFLAGS) -ffreestanding -nostartfiles
 
 $(BUILDEXEDIR)/%.c.o: %.c $(BUILDEXEDIR) $(HEADERS)
-	$(CC) -c -o $@ $<  -m68020
+	$(CC) -c -o $@ $< $(CFLAGS)
 
 $(BUILDDIR)Static/%.c.o: %.c $(BUILDDIR) $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) -DKEYBOARDVIEW_STATICLINK=1
 
 
 $(BUILDLIBDIR)/%.s.o: %.s $(BUILDLIBDIR) $(HEADERS)
-	# with phxass
+	# use phxass as assembler
 	phxass $< TO $@ $(ASMFLAGS)
-
+	#gcc assembler will not make it.
+	#as $< -o $@ -m68000
 # - - - - - - - - - for .gadget
 
 $(BUILDDIR)/keyboardview.gadget: $(GADGETOBJS)
-	$(CC) -o $@ $(GADGETOBJS) $(CFLAGS) -noixemul -m68020 -ffreestanding -nostartfiles  -Wl,-e,__start
-#	slink $(GADGETOBJS) lib lib:sc.lib to $@
+	$(CC) -o $@ $(GADGETOBJS) $(CFLAGS) -ffreestanding -nostartfiles  -Wl,-e,__start
 
 # - - - - - - - - - executable to test gadget
 
 $(BUILDDIR)/keyboardviewTest: $(BUILDEXEDIR)/keyboardviewtest.c.o
-	$(CC) -o $@ $(BUILDEXEDIR)/keyboardviewtest.c.o
-#	slink FROM LIB:c.o $(BUILDDIR)/keyboardviewtest.c.o lib $(LIBS) to $@
+	$(CC) -o $@ $(CFLAGS) $(BUILDEXEDIR)/keyboardviewtest.c.o  -s
+
 
 # - - - - - - - - -  static test case executable
 
 $(BUILDDIR)Static/keyboardviewTest_static: $(BUILDDIR)Static $(BUILDDIR)Static/keyboardviewtest.c.o $(GADGETOBJSSTATIC)
-	$(CC) -o $@ $(BUILDDIR)Static/keyboardviewtest.c.o $(GADGETOBJSSTATIC)
-#	slink FROM LIB:c.o $(BUILDDIR)Static/keyboardviewtest.c.o $(GADGETOBJSSTATIC) lib $(LIBS) to $@
+	$(CC) -o $@ $(CFLAGS) $(BUILDDIR)Static/keyboardviewtest.c.o $(GADGETOBJSSTATIC)
+
 
 # - - - - - - -
 clean:

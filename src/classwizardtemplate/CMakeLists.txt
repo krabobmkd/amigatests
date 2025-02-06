@@ -22,7 +22,7 @@ add_executable(KeyboardViewTest_static
 		class_keyboardview_handleinput.c
 		)
 
-target_compile_options(KeyboardViewTest_static PRIVATE -s -save-temps -m68000)
+target_compile_options(KeyboardViewTest_static PRIVATE -s -save-temps -Os -m68000)
 target_compile_definitions(KeyboardViewTest_static PRIVATE KEYBOARDVIEW_STATICLINK=1 )
 target_link_options(KeyboardViewTest_static PRIVATE -s )
 install(TARGETS KeyboardViewTest_static DESTINATION "${CMAKE_SOURCE_DIR}/..")

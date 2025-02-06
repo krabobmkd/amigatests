@@ -25,7 +25,7 @@
  * like GA_Disabled.
  */
 
-#define KEYBOARDVIEW_Dummy			(TAG_USER+0x04000000)
+#define KEYBOARDVIEW_Dummy			(TAG_USER+0x04110000)
 
 #define	KEYBOARDVIEW_CenterX		(KEYBOARDVIEW_Dummy+1)
 
