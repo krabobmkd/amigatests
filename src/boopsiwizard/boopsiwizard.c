@@ -1,35 +1,3 @@
-/** little boopsi/reaction example
- * that uses the gadget to test,
- * in a layout, with a few buttons interaction.
- * This will use a static link of the class definition
- * when XXXXX_STATICLINK is defined,
- * (which is usefull for debugging)
- * and will search the shared .class file
- * when this is not defined.
- * Having different _STATICLINK names per
- * classes allow to have multiple class linked
- * as static or not per project.
- */
-/**
- Useful reminder when coding Boopsi/Reaction:
-    - Boopsi classes can extend modelclass, gadget, image, ...
-    - class initialized with LoadLibrary() uses MakeClass() and AddClass(),
-      have a registered name and are visible for all the system.
-    - class initialized with just MakeClass() are visible only to your program.
-    - In a layout gadget, you put gadgets with LAYOUT_AddChild.
-    - In a layout gadget, you put images with LAYOUT_AddImage.
-    - label.image can display text and/or images,
-    - label.image extends "image" and the text can't change.
-    - for a dynamic text label, use a flat button.
-    - you change one or more object attributes with SetAttrs()
-    - ...except for gadgets, in this case it's SetGadgetAttrs()
-        (certainly because of the antique gadtools API if you ask.)
-    - It's GetAttr() for everyone to get attributes values.
-    - Definitions for attribs are in their class include down there.
-    - All this "Datatype" story is the very same thing.
-
- https://wiki.amigaos.net/wiki/BOOPSI_-_Object_Oriented_Intuition
-*/
 
 #include <stdio.h>
 #include <string.h>
@@ -67,12 +35,8 @@
 
 #include "compilers.h"
 
-// this is the public definition of the class we test:
-#include "class_keyboardview.h"
 
-// because original reaction macros
-// are not modern GCC compatible.
-#include "reactioninlines.h"
+#include "boopsiinlines.h"
 
 typedef ULONG (*REHOOKFUNC)();
 
@@ -82,7 +46,6 @@ struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
 struct Library *UtilityBase=NULL; // inlined DoMethod() may use CallHooksKpt().
 struct Library *LayersBase=NULL; // only used by gadgets drawing in static link mode.
-
 // used for appicon.
 struct Library *IconBase=NULL;
 
@@ -93,11 +56,6 @@ struct Library *BitMapBase=NULL;
 struct Library *ButtonBase=NULL;
 struct Library *LabelBase=NULL;
 struct Library *CheckBoxBase=NULL;
-
-#ifndef KEYBOARDVIEW_STATICLINK
-struct Library *KeyBoardViewBase=NULL;
-#endif
-
 
 void cleanexit(const char *pmessage)
 {
@@ -128,12 +86,9 @@ typedef union MsgUnion
 #define GAD_BUTTON_RECENTER 1
 #define GAD_KEYBOARDVIEW_TOTEST 2
 #define GAD_DISABLECHECKBOX 3
+
+
 // all app related variables are here:
-// also we register that struct as a BOOPSI model,
-// which is useful to receive notifications
-// from gadgets that are created with ICA_TARGET, (ULONG)AppInstance
-// let's just use it to store anything including gadgets...
-// DEVTODO: you can extend this example app struct.
 struct App
 {
     Object *window_obj; // window as boopsi object
@@ -146,7 +101,7 @@ struct App
 
     ULONG   fontHeight; // some stat to size according to current font.
 
-    Object *mainlayout;
+    Object *mainvlayout;
         Object *horizontallayout;
             Object *testbt;
             Object *kbdview;
@@ -411,7 +366,7 @@ int main(int argc, char **argv)
 
     {
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);
-        app->mainlayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
+        app->mainvlayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
             GA_DrawInfo, app->drawInfo,
             LAYOUT_DeferLayout, TRUE, /* Layout refreshes done on task's context (by thewindow class) */
             LAYOUT_SpaceOuter, TRUE,
@@ -422,7 +377,7 @@ int main(int argc, char **argv)
             LAYOUT_AddChild, app->bottombarlayout,
                 CHILD_WeightedHeight,0,
             TAG_END);
-        if (!app->mainlayout) cleanexit("layout error 3");
+        if (!app->mainvlayout) cleanexit("layout error 3");
     } //end if screen
 
 
@@ -436,7 +391,7 @@ int main(int argc, char **argv)
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY /*| IDCMP_VANILLAKEY*/, // we want localized keys , not the raws.
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
         WA_Title, "KeyboardView Test",
-        WINDOW_ParentGroup, app->mainlayout,
+        WINDOW_ParentGroup, app->mainvlayout,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, GetDiskObject("PROGDIR:ReAction"),
         WINDOW_IconTitle, "KeyboardView Test",
@@ -589,7 +544,7 @@ void exitclose(void)
         if(app->window_obj) DisposeObject(app->window_obj);
         else {
             // but if not attached because mid-init fail, has to be manual.
-            if(app->mainlayout)  DisposeObject(app->mainlayout);
+            if(app->mainvlayout)  DisposeObject(app->mainvlayout);
             else {
                 if(app->horizontallayout) DisposeObject(app->horizontallayout);
                 else {
