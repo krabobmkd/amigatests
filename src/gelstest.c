@@ -11,15 +11,81 @@
 
 #include "datatypebm.h"
 
-
+struct Screen *pLockedScreen=NULL;
 struct Window *w=NULL;
 struct BitMap *bm=NULL;
+PLANEPTR bm_mask=NULL;
 
-int init()
+
+/* Create a Bob from the information given in nBob.  Use freeBob() to free this GEL.
+** A VSprite is created for this bob.  This routine properly allocates all double
+** buffered information if it is required.
+*/
+//struct Bob *makeBob(NEWBOB *nBob)
+//{
+//    struct Bob         *bob;
+//    struct VSprite     *vsprite;
+//    NEWVSPRITE          nVSprite ;
+//    LONG                rassize;
+
+//rassize = (LONG)sizeof(UWORD) * nBob->nb_WordWidth * nBob->nb_LineHeight * nBob->nb_RasDepth;
+
+//if (NULL != (bob = (struct Bob *)AllocMem((LONG)sizeof(struct Bob), MEMF_CLEAR)))
+//        {
+//        if (NULL != (bob->SaveBuffer = (WORD *)AllocMem(rassize, MEMF_CHIP)))
+//            {
+//            nVSprite.nvs_WordWidth  = nBob->nb_WordWidth;
+//            nVSprite.nvs_LineHeight = nBob->nb_LineHeight;
+//            nVSprite.nvs_ImageDepth = nBob->nb_ImageDepth;
+//            nVSprite.nvs_Image      = nBob->nb_Image;
+//            nVSprite.nvs_X          = nBob->nb_X;
+//            nVSprite.nvs_Y          = nBob->nb_Y;
+//            nVSprite.nvs_ColorSet   = NULL;
+//            nVSprite.nvs_Flags      = nBob->nb_BFlags;
+//            /* Push the values into the NEWVSPRITE structure for use in makeVSprite(). */
+//            nVSprite.nvs_MeMask     = nBob->nb_MeMask;
+//            nVSprite.nvs_HitMask    = nBob->nb_HitMask;
+
+//            if ((vsprite = makeVSprite(&nVSprite)) != NULL)
+//                {
+//                vsprite->PlanePick = nBob->nb_PlanePick;
+//                vsprite->PlaneOnOff = nBob->nb_PlaneOnOff;
+//                vsprite->VSBob   = bob;
+//                bob->BobVSprite  = vsprite;
+//                bob->ImageShadow = vsprite->CollMask;
+//                bob->Flags       = 0;
+//                bob->Before      = NULL;
+//                bob->After       = NULL;
+//                bob->BobComp     = NULL;
+
+//                if (nBob->nb_DBuf)
+//                    {
+//                    if (NULL != (bob->DBuffer = (struct DBufPacket *)
+//                            AllocMem((LONG)sizeof(struct DBufPacket), MEMF_CLEAR)))
+//                        {
+//                        if (NULL != (bob->DBuffer->BufBuffer = (WORD *)AllocMem(rassize, MEMF_CHIP)))
+//                            return(bob);
+//                        FreeMem(bob->DBuffer, (LONG)sizeof(struct DBufPacket));
+//                        }
+//                    }
+//                else
+//                    {
+//                    bob->DBuffer = NULL;
+//                    return(bob);
+//                    }
+//                freeVSprite(vsprite);
+//                }
+//            FreeMem(bob->SaveBuffer, rassize);
+//            }
+//        FreeMem(bob, (LONG)sizeof(*bob));
+//        }
+//return(NULL);
+//}
+
+
+
+int init(struct Screen *pScreen)
 {
-
-    int res = LoadDataTypeToBm("chunli.gif",&bm);
-    printf("loadbm: %d BM: %08x\n",res,(int)bm);
 
     // init gels
 //    struct GelsInfo gelsi={};
@@ -29,18 +95,15 @@ int init()
 
     if(!w)
     {
-    int wwidth = 128;
-    int wheight = 96;
+        int wwidth = 128;
+        int wheight = 96;
 
-    struct Screen *pWbScreen;
-    if (!(pWbScreen = LockPubScreen(NULL))
-            ) return 1;
-        int _widthphys = pWbScreen->Width;
-        int _heightphys = pWbScreen->Height;
+        int _widthphys = pScreen->Width;
+        int _heightphys = pScreen->Height;
 
     // open window in center of workbench
-    int xcen = (pWbScreen->Width - wwidth);
-    int ycen = (pWbScreen->Height - wheight);
+    int xcen = (pScreen->Width - wwidth);
+    int ycen = (pScreen->Height - wheight);
     if(xcen<0) xcen=0;
     xcen>>=1;
     if(ycen<0) ycen=0;
@@ -74,19 +137,29 @@ int init()
             // | ((_maxzoomfactor>1)?WFLG_SIZEGADGET:0)
             ,
         WA_Title,(ULONG)"TestWindow", /* take title from version string */
-        WA_PubScreen, (ULONG)pWbScreen,
+        WA_PubScreen, (ULONG)pScreen,
         TAG_DONE
         );
 //    } // end if sbm ok
-    UnlockPubScreen(NULL,pWbScreen);
+
     if(w == NULL) return 2;
 
     } // end if window todo
+
+    int res = LoadDataTypeToBm("chunli.gif",&bm,&bm_mask,pScreen);
+    printf("loadbm: %d BM: %08x\n",res,(int)bm);
+
     return 0;
 }
 
 void exitclose()
 {
+    if(pLockedScreen)
+    {
+        UnlockPubScreen(NULL,pLockedScreen);
+        pLockedScreen = NULL;
+    }
+
     if(w) {
         CloseWindow(w);
         w = NULL;
@@ -101,7 +174,11 @@ void exitclose()
 int main(int argc, char **argv)
 {
     atexit(exitclose);
-    if(init()) return 1;
+
+    if (!(pLockedScreen = LockPubScreen(NULL))
+            ) return 1;
+
+    if(init(pLockedScreen)) return 1;
 
     // - - - -
     int iquit=0;
@@ -152,10 +229,7 @@ int main(int argc, char **argv)
 
         } // end while message
 
-
-
-
-    }
+    } // end while no quit.
 
     return 0;
 }
