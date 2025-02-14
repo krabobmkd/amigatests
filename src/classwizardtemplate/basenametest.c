@@ -365,7 +365,7 @@ int main(int argc, char **argv)
                         LABEL_Justification, LABEL_CENTRE,
                         LABEL_Text,(ULONG)"Values:",
                     TAG_END);
-
+ // label which changing text are reconfigured buttons...
  app->labelValues = (Object *)NewObject( NULL, "button.gadget",
                         GA_DrawInfo,(ULONG) app->drawInfo,
                         BUTTON_BevelStyle,BVS_NONE,
