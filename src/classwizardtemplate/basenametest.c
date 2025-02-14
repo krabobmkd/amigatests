@@ -327,19 +327,13 @@ int main(int argc, char **argv)
     if(!app->testbt) cleanexit("Can't button");
 
 
-#ifdef BASENAME_STATICLINK
-        app->kbdview = NewObject(BaseNameClassPtr, NULL,
-            GA_DrawInfo, app->drawInfo,
-            GA_ID,      GAD_BASENAME_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
-            ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                TAG_END);
-#else
-        app->kbdview = NewObject(NULL, BaseName_CLASS_ID,
-            GA_DrawInfo, app->drawInfo,
-            GA_ID,      GAD_BASENAME_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
-            ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                TAG_END);
-#endif
+    // with BASENAME_STATICLINK, BASENAME_GetClass() is a function,
+    //  else it is a vector function from a shared class library.
+    app->kbdview = NewObject(BASENAME_GetClass(), NULL,
+        GA_DrawInfo, app->drawInfo,
+        GA_ID,      GAD_BASENAME_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
+        ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+            TAG_END);
 
 
     if(!app->kbdview) cleanexit("Can't create kbdview");

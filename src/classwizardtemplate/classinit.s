@@ -68,6 +68,7 @@ CALL	MACRO
 
 	XREF	_CreateClass
 	XREF	_DestroyClass
+	XREF	_GetClass
 
 	XREF	_Class_ID
 	XREF	_VersionString
@@ -115,6 +116,7 @@ LibFuncTable:
 	DC.L	LibClose
 	DC.L	LibExpunge
 	DC.L	0 ; LibReserved
+	DC.L	_GetClass		; 1st public function, for boospi classes, just return class pointer used by NewObject().
 	DC.L	-1 ; end marker
 
 ;-----------------------------------------------------------------------

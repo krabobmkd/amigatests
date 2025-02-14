@@ -143,7 +143,18 @@ void ASM DestroyClass(REG(a6,struct ExtClassLib *LibBase))
   BaseName_CloseLibs_Dependencies();
   BaseName_CloseLibs();
 }
+// first public lib function for boopsi classes
+Class * ASM GetClass(void)
+{
+    return BaseNameClassPtr;
+}
 // end if shared class
+#else
+// static version:
+Class *BASENAME_GetClass(void)
+{
+    return BaseNameClassPtr;
+}
 #endif
 
 //====================================================================================
