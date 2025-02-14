@@ -68,7 +68,7 @@
 #include "compilers.h"
 
 // this is the public definition of the class we test:
-#include "class_keyboardview.h"
+#include "class_basename.h"
 
 // because original reaction macros
 // are not modern GCC compatible.
@@ -94,8 +94,8 @@ struct Library *ButtonBase=NULL;
 struct Library *LabelBase=NULL;
 struct Library *CheckBoxBase=NULL;
 
-#ifndef KEYBOARDVIEW_STATICLINK
-struct Library *KeyBoardViewBase=NULL;
+#ifndef BASENAME_STATICLINK
+struct Library *BaseNameBase=NULL;
 #endif
 
 
@@ -126,7 +126,7 @@ typedef union MsgUnion
 /* Gadget action IDs, just to demonstrate some interactions
  */
 #define GAD_BUTTON_RECENTER 1
-#define GAD_KEYBOARDVIEW_TOTEST 2
+#define GAD_BASENAME_TOTEST 2
 #define GAD_DISABLECHECKBOX 3
 // all app related variables are here:
 // also we register that struct as a BOOPSI model,
@@ -189,12 +189,12 @@ ULONG ASM SAVEDS AppModelDispatch(
             if((ptag = FindTagItem( GA_ID,M->opUpdate.opu_AttrList ))!=NULL) sender_ID = ptag->ti_Data;
 
             // our gadget is notifying new clicked coordinates!
-            if( sender_ID == GAD_KEYBOARDVIEW_TOTEST )
+            if( sender_ID == GAD_BASENAME_TOTEST )
             {   // table used as parameter for the button internal sprintf() formating
                 LONG centerXY[2];
-                if((ptag = FindTagItem( KEYBOARDVIEW_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
+                if((ptag = FindTagItem( BASENAME_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
                     centerXY[0] = ((UWORD)ptag->ti_Data * 100)>>16; // get percent
-                if((ptag = FindTagItem( KEYBOARDVIEW_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
+                if((ptag = FindTagItem( BASENAME_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
                     centerXY[1] = ((UWORD)ptag->ti_Data * 100)>>16;
 
                 if(app->labelValues)
@@ -294,18 +294,17 @@ int main(int argc, char **argv)
    if ( ! (CheckBoxBase = OpenLibrary("gadgets/checkbox.gadget",44)))
        cleanexit("Can't open checkbox.gadget");
 
-#ifdef KEYBOARDVIEW_STATICLINK
-    if(KeyboardView_static_class_init()) cleanexit("Can't create private class");
+#ifdef BASENAME_STATICLINK
+    if(BaseName_static_class_init()) cleanexit("Can't create private class");
 #else
-    if ( ! (KeyBoardViewBase = OpenLibrary("keyboardview.gadget",VERSION_KEYBOARDVIEW)))
-        cleanexit("Can't open keyboardview.gadget");
+    if ( ! (BaseNameBase = OpenLibrary("basename.gadget",VERSION_BASENAME)))
+        cleanexit("Can't open basename.gadget");
 #endif
 
 
     if(!initAppModel())  cleanexit("Can't create app");
 
 
-    // = = = = = now that needed classes arte loaded
     // = = = = = creates the instances...
 
     app->lockedscreen = LockPubScreen(NULL);
@@ -328,16 +327,16 @@ int main(int argc, char **argv)
     if(!app->testbt) cleanexit("Can't button");
 
 
-#ifdef KEYBOARDVIEW_STATICLINK
-        app->kbdview = NewObject(KeyboardViewClassPtr, NULL,
+#ifdef BASENAME_STATICLINK
+        app->kbdview = NewObject(BaseNameClassPtr, NULL,
             GA_DrawInfo, app->drawInfo,
-            GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
+            GA_ID,      GAD_BASENAME_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
             ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
                 TAG_END);
 #else
-        app->kbdview = NewObject(NULL, KeyboardView_CLASS_ID,
+        app->kbdview = NewObject(NULL, BaseName_CLASS_ID,
             GA_DrawInfo, app->drawInfo,
-            GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
+            GA_ID,      GAD_BASENAME_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
             ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
                 TAG_END);
 #endif
@@ -370,27 +369,19 @@ int main(int argc, char **argv)
                         GA_DrawInfo,(ULONG) app->drawInfo,
                         BUTTON_BevelStyle,BVS_NONE,
                         BUTTON_Transparent, TRUE,
+						GA_ReadOnly, TRUE,
                         BUTTON_Justification, BCJ_CENTER,
+						
                         GA_Text,(ULONG)"...",
                     TAG_END);
- {
-    /* ICA_MAP doesnt work and would trash the attribs of the target if it's another gadget...
-    struct TagItem attribToAttribMapping[] =
-    {
-        {GA_SELECTED, GA_DISABLED},
-        {TAG_END, }
-    };*/
 
     app->disablecheckbox = (Object *)NewObject( CHECKBOX_GetClass(), NULL,
                     GA_DrawInfo,(ULONG) app->drawInfo,
                     GA_Text,(ULONG)"Disable",
-                 // tried auto attrib mapping with this, has terrible side effects.
-                 //  ICA_TARGET,(ULONG)app->kbdview, // send the state change to this.
-                 //  ICA_MAP,(ULONG)&attribToAttribMapping[0],
                  GA_ID,GAD_DISABLECHECKBOX,
                  ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
                 TAG_END);
- }
+
     if(!app->disablecheckbox) cleanexit("Can't create checkbox");
 
     app->bottombarlayout =
@@ -435,11 +426,11 @@ int main(int argc, char **argv)
         WA_CustomScreen, app->lockedscreen,
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY /*| IDCMP_VANILLAKEY*/, // we want localized keys , not the raws.
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
-        WA_Title, "KeyboardView Test",
+        WA_Title, "BaseName Test",
         WINDOW_ParentGroup, app->mainlayout,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, GetDiskObject("PROGDIR:ReAction"),
-        WINDOW_IconTitle, "KeyboardView Test",
+        WINDOW_IconTitle, "BaseName Test",
         WINDOW_AppPort, app->app_port,
     TAG_END);
     if(!app->window_obj) cleanexit("can't create window");
@@ -488,8 +479,8 @@ int main(int argc, char **argv)
                                 // change attributes of the gadget we created:
                                 // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
                                 SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL,
-                                    KEYBOARDVIEW_CenterX, 32768,
-                                    KEYBOARDVIEW_CenterY, 32768,
+                                    BASENAME_CenterX, 32768,
+                                    BASENAME_CenterY, 32768,
                                     TAG_DONE);
                             break;
 
@@ -612,10 +603,10 @@ void exitclose(void)
     closeAppModel();
 
 
-#ifndef KEYBOARDVIEW_STATICLINK
-    if(KeyBoardViewBase) CloseLibrary(KeyBoardViewBase);
+#ifndef BASENAME_STATICLINK
+    if(BaseNameBase) CloseLibrary(BaseNameBase);
 #else
-    KeyboardView_static_class_close();
+    BaseName_static_class_close();
 #endif
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
     if(LabelBase) CloseLibrary(LabelBase);

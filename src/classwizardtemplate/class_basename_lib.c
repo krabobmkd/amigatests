@@ -15,7 +15,7 @@
 #include <intuition/classes.h>
 #include <intuition/classusr.h>
 
-#include "class_keyboardview_private.h"
+#include "class_basename_private.h"
 
 #ifdef USE_BEVEL_FRAME
     #include <proto/bevel.h>
@@ -23,12 +23,12 @@
 
 typedef ULONG (*REHOOKFUNC)();
 
-#ifdef KEYBOARDVIEW_STATICLINK
+#ifdef BASENAME_STATICLINK
 #include <stdlib.h>
 #include <string.h>
 #endif
 
-#ifndef KEYBOARDVIEW_STATICLINK
+#ifndef BASENAME_STATICLINK
 struct ExecBase       *SysBase=NULL;
 struct GfxBase        *GfxBase=NULL;
 struct IntuitionBase  *IntuitionBase=NULL;
@@ -44,20 +44,21 @@ struct Library        *UtilityBase=NULL;
 struct Library        *BevelBase=NULL;
 #endif
 // this is the only global writtable we should see in the whole class binary !
-struct IClass   *KeyboardViewClassPtr=NULL;
+struct IClass   *BaseNameClassPtr=NULL;
 // this 2 strings are also linked to the asm startup header ( in .gadget mode)
 // note: (const char *str="") would make str be a (char **) to the linker. so char str[] is linkable to asm startup
-#ifndef KEYBOARDVIEW_STATICLINK
-const char KeyboardViewClassID[]= KeyboardView_CLASS_ID;
+#ifndef BASENAME_STATICLINK
+const char Class_ID[]= BaseName_CLASS_ID;
+const char *VersionString = "basename.gadget 1.0 "; // add date
 #endif
-const char KeyboardViewSuperClassID[]=KeyboardView_SUPERCLASS_ID;
-const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
+const char BaseNameSuperClassID[]=BaseName_SUPERCLASS_ID;
+
 
 
 
 // note: if other boopsi classes are dependences, they need to be opened here.
-#ifndef KEYBOARDVIEW_STATICLINK
-    BOOL KeyboardView_OpenLibs(void)
+#ifndef BASENAME_STATICLINK
+    BOOL BaseName_OpenLibs(void)
     {
       // if here, sysbase is already acquired from LibInit.
       //NO: if(!SysBase) SysBase = *(( struct ExecBase **)4);
@@ -72,7 +73,7 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
         return TRUE;
     }
 
-    void KeyboardView_CloseLibs(void)
+    void BaseName_CloseLibs(void)
     {
         if(LayersBase) CloseLibrary(LayersBase);
         if(DOSBase) CloseLibrary((struct Library *)DOSBase);
@@ -82,7 +83,7 @@ const char *KeyboardViewVersionString = "keyboardview.gadget 1.0 "; // add date
     }
 
 #endif
-BOOL KeyboardView_OpenLibs_Dependencies(void)
+BOOL BaseName_OpenLibs_Dependencies(void)
 {
 #ifdef USE_BEVEL_FRAME
     if(!BevelBase) BevelBase = OpenLibrary("images/bevel.image",44);
@@ -91,7 +92,7 @@ BOOL KeyboardView_OpenLibs_Dependencies(void)
     return TRUE;
 }
 
-void KeyboardView_CloseLibs_Dependencies(void)
+void BaseName_CloseLibs_Dependencies(void)
 {
 #ifdef USE_BEVEL_FRAME
     if(BevelBase) CloseLibrary(BevelBase);
@@ -100,76 +101,76 @@ void KeyboardView_CloseLibs_Dependencies(void)
 }
 //==========================================================================================
 // does not need to be exact, we just want the function pointer:
-ULONG ASM SAVEDS KeyboardView_Dispatcher(
+ULONG ASM SAVEDS BaseName_Dispatcher(
                     REG(a0,struct IClass *C),
                     REG(a2,struct Gadget *Gad),
                     REG(a1,union MsgUnion *M));
 
-#ifndef KEYBOARDVIEW_STATICLINK
+#ifndef BASENAME_STATICLINK
 // called by shared Lib init to create class.
 
-int ASM KeyboardView_CreateClass(REG(a6,struct ExtClassLib *LibBase))
+int ASM CreateClass(REG(a6,struct ExtClassLib *LibBase))
 {
   if(LibBase) SysBase = LibBase->cb_SysBase;
-  if(KeyboardView_OpenLibs() && KeyboardView_OpenLibs_Dependencies())
+  if(BaseName_OpenLibs() && BaseName_OpenLibs_Dependencies())
   {
-    if(KeyboardViewClassPtr=MakeClass(KeyboardView_CLASS_ID,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
+    if(BaseNameClassPtr=MakeClass(BaseName_CLASS_ID,BaseNameSuperClassID,0,sizeof(BaseName),0))
     {
-     if(LibBase) LibBase->cb_ClassLibrary.cl_Class = KeyboardViewClassPtr;
-      KeyboardViewClassPtr->cl_Dispatcher.h_Data=LibBase;
-      KeyboardViewClassPtr->cl_Dispatcher.h_Entry=(REHOOKFUNC)KeyboardView_Dispatcher;
+     if(LibBase) LibBase->cb_ClassLibrary.cl_Class = BaseNameClassPtr;
+      BaseNameClassPtr->cl_Dispatcher.h_Data=LibBase;
+      BaseNameClassPtr->cl_Dispatcher.h_Entry=(REHOOKFUNC)BaseName_Dispatcher;
 
-      AddClass(KeyboardViewClassPtr);
+      AddClass(BaseNameClassPtr);
       /* Success */
       return(0);
     }
-    KeyboardView_CloseLibs_Dependencies();
-    KeyboardView_CloseLibs();
+    BaseName_CloseLibs_Dependencies();
+    BaseName_CloseLibs();
   }
   /* Fail */
   return(-1);
 }
 // called by shared Lib expunge to dispose class.
-void ASM KeyboardView_DestroyClass(REG(a6,struct ExtClassLib *LibBase))
+void ASM DestroyClass(REG(a6,struct ExtClassLib *LibBase))
 {
-    // note LibBase and KeyboardViewClassPtr should be the same
-    if(KeyboardViewClassPtr)
+    // note LibBase and BaseNameClassPtr should be the same
+    if(BaseNameClassPtr)
     {
-      RemoveClass(KeyboardViewClassPtr);
-      FreeClass(KeyboardViewClassPtr);
-      KeyboardViewClassPtr = NULL;
+      RemoveClass(BaseNameClassPtr);
+      FreeClass(BaseNameClassPtr);
+      BaseNameClassPtr = NULL;
     }
-  KeyboardView_CloseLibs_Dependencies();
-  KeyboardView_CloseLibs();
+  BaseName_CloseLibs_Dependencies();
+  BaseName_CloseLibs();
 }
 // end if shared class
 #endif
 
 //====================================================================================
 
-#ifdef KEYBOARDVIEW_STATICLINK
+#ifdef BASENAME_STATICLINK
 
 // just use this one once when static link
-int KeyboardView_static_class_init()
+int BaseName_static_class_init()
 { 
-   if(!KeyboardView_OpenLibs_Dependencies()) return 1;
-    if(KeyboardViewClassPtr=MakeClass(NULL,KeyboardViewSuperClassID,0,sizeof(KeyboardView),0))
+   if(!BaseName_OpenLibs_Dependencies()) return 1;
+    if(BaseNameClassPtr=MakeClass(NULL,BaseNameSuperClassID,0,sizeof(BaseName),0))
     {
-      KeyboardViewClassPtr->cl_Dispatcher.h_Entry=(REHOOKFUNC)KeyboardView_Dispatcher;
-     // do not AddClass() when static, no need to publish, KeyboardViewClassPtr will be enough.
+      BaseNameClassPtr->cl_Dispatcher.h_Entry=(REHOOKFUNC)BaseName_Dispatcher;
+     // do not AddClass() when static, no need to publish, BaseNameClassPtr will be enough.
       /* Success */
       return(0);
     }
     return 1;
 }
 
-void KeyboardView_static_class_close()
+void BaseName_static_class_close()
 {
-    KeyboardView_CloseLibs_Dependencies();
-    if(KeyboardViewClassPtr)
+    BaseName_CloseLibs_Dependencies();
+    if(BaseNameClassPtr)
     {
-      FreeClass(KeyboardViewClassPtr);
-      KeyboardViewClassPtr = NULL;
+      FreeClass(BaseNameClassPtr);
+      BaseNameClassPtr = NULL;
     }
 
 }

@@ -1,23 +1,23 @@
-#ifndef GADGETS_KEYBOARDVIEW_H
-#define GADGETS_KEYBOARDVIEW_H
+#ifndef GADGETS_BASENAME_H
+#define GADGETS_BASENAME_H
 /**
- * Definitions for Gadget KeyboardView
+ * Definitions for Gadget BaseName
  * (This is the file that can be released)
  */
 #include <exec/types.h>
 #include <intuition/gadgetclass.h>
 #include <intuition/classes.h>
 
-#define VERSION_KEYBOARDVIEW 1
-#define KeyboardView_SUPERCLASS_ID "gadgetclass"
+#define VERSION_BASENAME 1
+#define BaseName_SUPERCLASS_ID "gadgetclass"
 
-#ifdef KEYBOARDVIEW_STATICLINK
-    extern int KeyboardView_static_class_init();
-    extern void KeyboardView_static_class_close();
-    extern struct IClass   *KeyboardViewClassPtr;
+#ifdef BASENAME_STATICLINK
+    extern int BaseName_static_class_init();
+    extern void BaseName_static_class_close();
+    extern struct IClass   *BaseNameClassPtr;
 #else
-    // KeyboardView_CLASS_ID is the identifier for this class, when shared.
-    #define KeyboardView_CLASS_ID "keyboardview.gadget"
+    // BaseName_CLASS_ID is the identifier for this class, when shared.
+    #define BaseName_CLASS_ID "basename.gadget"
 #endif
 
 /* Additional attributes defined by the gadget class.
@@ -25,13 +25,13 @@
  * like GA_Disabled.
  */
 
-#define KEYBOARDVIEW_Dummy			(TAG_USER+0x04110000)
+#define BASENAME_Dummy			(TAG_USER+0x04110000)
 
-#define	KEYBOARDVIEW_CenterX		(KEYBOARDVIEW_Dummy+1)
+#define	BASENAME_CenterX		(BASENAME_Dummy+1)
 
-#define	KEYBOARDVIEW_CenterY		(KEYBOARDVIEW_Dummy+2)
+#define	BASENAME_CenterY		(BASENAME_Dummy+2)
 
 /** DEVTODO: adds attributes definitions here and
- * manage them in class_keyboardview_attribs.c
+ * manage them in class_basename_attribs.c
  */
 #endif

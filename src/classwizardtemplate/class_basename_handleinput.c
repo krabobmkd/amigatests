@@ -14,20 +14,20 @@
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
 
-#include "class_keyboardview.h"
-#include "class_keyboardview_private.h"
+#include "class_basename.h"
+#include "class_basename_private.h"
 
 #include <utility/tagitem.h>
 
-// ULONG KeyboardView_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...);
-ULONG KeyboardView_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	*GInfo)
+// ULONG BaseName_DoNotify(struct IClass *C, struct Gadget *Gad, Msg M, ULONG Flags, Tag Tags, ...);
+ULONG BaseName_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	*GInfo)
 {
     struct opUpdate notifymsg;
-    KeyboardView *gdata=INST_DATA(C, Gad);
+    BaseName *gdata=INST_DATA(C, Gad);
     ULONG tags[]={
         GA_ID,0,
-        KEYBOARDVIEW_CenterX,0,
-        KEYBOARDVIEW_CenterY,0,
+        BASENAME_CenterX,0,
+        BASENAME_CenterY,0,
         TAG_DONE
     };
 
@@ -44,11 +44,11 @@ ULONG KeyboardView_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	
 
 #define MRK_BUFFER_SIZE 3
 
-ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
+ULONG BaseName_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
 {
   ULONG retval=GMR_MEACTIVE; //default
 
-  KeyboardView *gdata;
+  BaseName *gdata;
   struct InputEvent *ie;
 
   gdata=INST_DATA(C, Gad);
@@ -76,7 +76,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+            BaseName_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -89,7 +89,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+            BaseName_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -102,7 +102,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+            BaseName_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -116,7 +116,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
             gdata->ActivePen=t;
 
             gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
-            KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+            BaseName_Notify(C,Gad,(APTR)Input, 0);
           }
           break;
 
@@ -178,7 +178,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
             if(gdata->ActivePen!=gdata->LastActivePen)
             {
               i_StoreUndoIfNeeded(C,Gad,Input);
-              KeyboardView_Notify(C,Gad,(APTR)Input, OPUF_INTERIM);
+              BaseName_Notify(C,Gad,(APTR)Input, OPUF_INTERIM);
               gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
             }
           }
@@ -269,7 +269,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
                   gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
               }
 
-              KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+              BaseName_Notify(C,Gad,(APTR)Input, 0);
 
               retval = GMR_MEACTIVE;
 //              retval = GMR_NOREUSE;
@@ -290,7 +290,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
               if(gdata->_EditMode)
               {
                 gdata->_EditMode=0;
-                KeyboardView_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
+                BaseName_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
               }
 //              retval = GMR_NOREUSE | GMR_VERIFY;
               retval = GMR_REUSE;
@@ -309,11 +309,11 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
 
               gdata->_MouseMode=1;
               SetGadgetAttrs(Gad,Input->gpi_GInfo->gi_Window,NULL,
-                    KEYBOARDVIEW_CenterX,cx,
-                    KEYBOARDVIEW_CenterY,cy,
+                    BASENAME_CenterX,cx,
+                    BASENAME_CenterY,cy,
                     TAG_END
                 );
-              //KeyboardView_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
+              //BaseName_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);
 
               retval = GMR_MEACTIVE;
             }
@@ -328,7 +328,7 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
             {//                                                                                        (44.3.1) (09/01/00)
               gdata->EditMode=0;//                                                                     (44.3.1) (09/01/00)
               gad_Render(C,Gad,(APTR)Input,GREDRAW_UPDATE);//                                          (44.3.1) (09/01/00)
-              KeyboardView_Notify(C,Gad,(APTR)Input, 0);//                                                        (44.3.1) (09/01/00)
+              BaseName_Notify(C,Gad,(APTR)Input, 0);//                                                        (44.3.1) (09/01/00)
             }//                                                                                        (44.3.1) (09/01/00)
             retval = GMR_REUSE;*/
                                           /* Since the gadget is going inactive, send a final   */
@@ -345,12 +345,12 @@ ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Inp
 
     // if(notifCoords)
     // {
-    //     KeyboardView_NotifyCoords(C,Gad,Input->gpi_GInfo);
+    //     BaseName_NotifyCoords(C,Gad,Input->gpi_GInfo);
     // }
 
   if(retval!=GMR_MEACTIVE)
   {
-    //KeyboardView_Notify(C,Gad,(APTR)Input, 0);
+    //BaseName_Notify(C,Gad,(APTR)Input, 0);
   }
 
   return(retval);

@@ -60,31 +60,17 @@ _LVOFreeMem     EQU	-210
 VERSION		EQU	1
 REVISION	EQU	0
 
-
-;VERS	MACRO
-;		dc.b	'keyboardview.gadget 1.0'
-;	ENDM
-;VSTRING	MACRO
-;		dc.b	'keyboardview.gadget 42.2 (7.3.94)',13,10,0
-;	ENDM
-;VERSTAG	MACRO
-;		dc.b	0,'$VER: keyboardview.gadget 42.2 (7.3.94)',0
-;	ENDM
-; -----------------------------
-
 CALL	MACRO
 	jsr	_LVO\1(a6)
 	ENDM
 
-
-
 ;---------------------------------------------------------------------------
 
-	XREF	_KeyboardView_CreateClass
-	XREF	_KeyboardView_DestroyClass
+	XREF	_CreateClass
+	XREF	_DestroyClass
 
-	XREF	_KeyboardViewClassID
-	XREF	_KeyboardViewVersionString
+	XREF	_Class_ID
+	XREF	_VersionString
 ;---------------------------------------------------------------------------
 
 	SECTION CODE
@@ -110,8 +96,8 @@ RomTag:
         DC.B    VERSION                 ; UBYTE RT_VERSION
         DC.B    NT_LIBRARY              ; UBYTE RT_TYPE
         DC.B    0                       ; BYTE  RT_PRI
-        DC.L    _KeyboardViewClassID    ; APTR  RT_NAME   libname is same as classid (myclass.class or myclass.gadget)
-        DC.L    _KeyboardViewVersionString ; APTR  RT_IDSTRING  version string
+        DC.L    _Class_ID    ; APTR  RT_NAME   libname is same as classid (myclass.class or myclass.gadget)
+        DC.L    _VersionString ; APTR  RT_IDSTRING  version string
         DC.L    LibInitTable            ; APTR  RT_INIT
 
         CNOP    0,4
@@ -220,7 +206,7 @@ LibOpen:
 ;krb says: original example was using bsr to reach c funcs,
 ; but only jsr will make it to other sections with rellocation.
 ; + sasc call extern C function @function when other compilers (gcc) wants _function
-	jsr	_KeyboardView_CreateClass
+	jsr	_CreateClass
 
 	tst.l	d0
 	beq.s	jp2  ; success is zero !!!
@@ -244,7 +230,7 @@ LibClose:
 	bne.s	jp3			; if openers, don't remove class
 
 	; zero openers, so try to remove class
-	jsr	_KeyboardView_DestroyClass
+	jsr	_DestroyClass
 
 jp3:
 	; if delayed expunge bit set, then try to get rid of the library

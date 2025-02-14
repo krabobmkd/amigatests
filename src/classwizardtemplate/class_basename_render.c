@@ -18,8 +18,8 @@
 #include <intuition/gadgetclass.h>
 #include <utility/tagitem.h>
 
-#include "class_keyboardview.h"
-#include "class_keyboardview_private.h"
+#include "class_basename.h"
+#include "class_basename_private.h"
 
 #ifdef USE_BEVEL_FRAME
     #include <proto/bevel.h>
@@ -42,12 +42,12 @@
 //    struct TagItem	*gpd_Attrs;	/* Additional attributes */
 //};
 
-ULONG KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
+ULONG BaseName_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
 {
-  KeyboardView *gdata=0;
+  BaseName *gdata=0;
 
   if(Gad) gdata=INST_DATA(C, Gad);
-// Printf("KeyboardView_Domain data:%lx\n",(int)gdata);
+// Printf("BaseName_Domain data:%lx\n",(int)gdata);
 
   D->gpd_Domain.Left=0;
   D->gpd_Domain.Top=0;
@@ -95,9 +95,9 @@ ULONG KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
  * The gadget knows its final coordinates,
  * So we may have to resize what's inside our gadget.
  */
-ULONG KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
+ULONG BaseName_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
 {
-  KeyboardView *gdata;
+  BaseName *gdata;
   LONG topedge,leftedge,width,height;
 
     gdata=INST_DATA(C, Gad);
@@ -143,9 +143,9 @@ ULONG KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
 
 
 /* draw yourself, in the appropriate state */
-ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update)
+ULONG BaseName_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update)
 {
-  KeyboardView *gdata;
+  BaseName *gdata;
   struct RastPort *rp; 
   ULONG retval=1;
 

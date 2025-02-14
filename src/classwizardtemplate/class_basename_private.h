@@ -1,8 +1,8 @@
-#ifndef _CLASS_KEYBOARDVIEWPRIVATE_H_
-#define _CLASS_KEYBOARDVIEWPRIVATE_H_
+#ifndef _CLASS_BASENAMEPRIVATE_H_
+#define _CLASS_BASENAMEPRIVATE_H_
 
 #include "compilers.h"
-#include "class_keyboardview.h"
+#include "class_basename.h"
 
 // not much sense because c++ static runtime are hard to link.
 #ifdef __cplusplus
@@ -30,7 +30,7 @@ extern "C" {
 * (These are just concatenated structs in a system private way.)
 * DEVTODO: make this class evolve to retain the data needed to draw and interact with your gadget.
 */
-typedef struct IKeyboardView {
+typedef struct IBaseName {
     // let's say we have coordinates of the center of the circle
     UWORD _circleCenterX,_circleCenterY;
 
@@ -46,14 +46,14 @@ typedef struct IKeyboardView {
     struct Image *Bevel;
 #endif
 
-} KeyboardView;
+} BaseName;
 
-ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);
-ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get);
-ULONG KeyboardView_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout);
-ULONG KeyboardView_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update);
-ULONG KeyboardView_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input);
-ULONG KeyboardView_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D);
+ULONG BaseName_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set);
+ULONG BaseName_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get);
+ULONG BaseName_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout);
+ULONG BaseName_Render(Class *C, struct Gadget *Gad, struct gpRender *Render, ULONG update);
+ULONG BaseName_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input);
+ULONG BaseName_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D);
 
 // - - - - -- -
 
@@ -80,7 +80,7 @@ typedef union MsgUnion
 * It may be better to just notify what change and have many notify functions per theme.
 * Some examples use only one Notify which send all attribs.
 */
-ULONG KeyboardView_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	*GInfo);
+ULONG BaseName_NotifyCoords(Class *C, struct Gadget *Gad, struct GadgetInfo	*GInfo);
 
 /** this is the struct that is the extended struct Library
  * That is created with OpenLibrary().

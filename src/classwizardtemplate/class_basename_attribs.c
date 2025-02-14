@@ -15,17 +15,17 @@
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
 
-#include "class_keyboardview.h"
-#include "class_keyboardview_private.h"
+#include "class_basename.h"
+#include "class_basename_private.h"
 
 #include <utility/tagitem.h>
 
 
-ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
+ULONG BaseName_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
 {
   ULONG retval=1;
   int   DoSuperCall=0;
-  KeyboardView *gdata;
+  BaseName *gdata;
   ULONG *data;
 
   gdata=INST_DATA(C, Gad);
@@ -34,10 +34,10 @@ ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
 
   switch(Get->opg_AttrID)
   {
-    case KEYBOARDVIEW_CenterX:
+    case BASENAME_CenterX:
         *data = (LONG)gdata->_circleCenterX;
     break;
-    case KEYBOARDVIEW_CenterY:
+    case BASENAME_CenterY:
         *data = (LONG)gdata->_circleCenterY;
     break;
     // super class gadget things. would manage attribs selected/hightlighted, ...
@@ -54,11 +54,11 @@ ULONG KeyboardView_GetAttr(Class *C, struct Gadget *Gad, struct opGet *Get)
 
 ULONG Redraw[]={0, GREDRAW_UPDATE, GREDRAW_REDRAW};
 
-ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
+ULONG BaseName_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
 {
   struct TagItem *tag;
   ULONG data; // for SetAttribs, retval means if anything needed redraw.
-  KeyboardView *gdata;
+  BaseName *gdata;
   ULONG redraw=0, update=0, notifCoords=0;
 
   gdata=INST_DATA(C, Gad);
@@ -74,7 +74,7 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
 
     switch(tag->ti_Tag)
     {
-     case KEYBOARDVIEW_CenterX:
+     case BASENAME_CenterX:
         if((UWORD)data != gdata->_circleCenterX )
         {
             gdata->_circleCenterX = (UWORD)data ;
@@ -82,7 +82,7 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
             notifCoords = 1;
         }
         break;
-     case KEYBOARDVIEW_CenterY:
+     case BASENAME_CenterY:
         if((UWORD)data != gdata->_circleCenterY )
         {
             gdata->_circleCenterY = (UWORD)data ;
@@ -142,7 +142,7 @@ ULONG KeyboardView_SetAttrs(Class *C, struct Gadget *Gad, struct opSet *Set)
 
     if(notifCoords)
     {
-        KeyboardView_NotifyCoords(C,Gad,Set->ops_GInfo);
+        BaseName_NotifyCoords(C,Gad,Set->ops_GInfo);
     }
   }
 

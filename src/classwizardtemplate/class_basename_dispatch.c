@@ -16,8 +16,8 @@
 #include <intuition/classusr.h>
 #include <intuition/gadgetclass.h>
 
-#include "class_keyboardview.h"
-#include "class_keyboardview_private.h"
+#include "class_basename.h"
+#include "class_basename_private.h"
 
 #ifdef USE_BEVEL_FRAME
     #include <proto/bevel.h>
@@ -30,12 +30,12 @@
 *  it can't use dos.library, it can't wait on application signals or message ports
 * and it can't call any Intuition functions which might wait on Intuition."
 */
-ULONG ASM SAVEDS KeyboardView_Dispatcher(
+ULONG ASM SAVEDS BaseName_Dispatcher(
                     REG(a0,struct IClass *C),
                     REG(a2,struct Gadget *Gad),
                     REG(a1,union MsgUnion *M))
 {
-  KeyboardView *gdata;
+  BaseName *gdata;
   ULONG retval=0;
   gdata=INST_DATA(C, Gad);
 
@@ -91,11 +91,11 @@ ULONG ASM SAVEDS KeyboardView_Dispatcher(
     case OM_SET:
        // Printf("OM_SET: GadgetID:%ld gad:%lx\n",(int)Gad->GadgetID,(int)Gad);
       retval=DoSuperMethodA(C,(Object *)Gad,(Msg)M);
-      KeyboardView_SetAttrs(C,Gad,(struct opSet *)M);
+      BaseName_SetAttrs(C,Gad,(struct opSet *)M);
      break;
 
     case OM_GET:
-      KeyboardView_GetAttr(C,Gad,(struct opGet *)M);
+      BaseName_GetAttr(C,Gad,(struct opGet *)M);
      break;
 
     case OM_DISPOSE:
@@ -114,30 +114,30 @@ ULONG ASM SAVEDS KeyboardView_Dispatcher(
 
     case GM_GOACTIVE:
       Gad->Flags |= GFLG_SELECTED;
-      retval=KeyboardView_HandleInput(C,Gad,(struct gpInput *)M);
+      retval=BaseName_HandleInput(C,Gad,(struct gpInput *)M);
 //      gad_Render(C,Gad,(APTR)M,GREDRAW_UPDATE);
 //      retval=GMR_MEACTIVE;
       break;
 
     case GM_GOINACTIVE:
       Gad->Flags &= ~GFLG_SELECTED;
-      KeyboardView_Render(C,Gad,(APTR)M,GREDRAW_UPDATE);
+      BaseName_Render(C,Gad,(APTR)M,GREDRAW_UPDATE);
       break;
 
     case GM_LAYOUT:
-      retval= KeyboardView_Layout(C,Gad,(struct gpLayout *)M);
+      retval= BaseName_Layout(C,Gad,(struct gpLayout *)M);
       break;
 
     case GM_RENDER:
-      retval=KeyboardView_Render(C,Gad,(struct gpRender *)M,0);
+      retval=BaseName_Render(C,Gad,(struct gpRender *)M,0);
       break;
 
     case GM_HANDLEINPUT:
-      retval=KeyboardView_HandleInput(C,Gad,(struct gpInput *)M);
+      retval=BaseName_HandleInput(C,Gad,(struct gpInput *)M);
       break;
 
     case GM_DOMAIN:
-      KeyboardView_Domain(C, Gad, (APTR)M);
+      BaseName_Domain(C, Gad, (APTR)M);
       retval=1;
 
     break;
