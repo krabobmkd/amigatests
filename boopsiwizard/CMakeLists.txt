@@ -1,0 +1,29 @@
+cmake_minimum_required (VERSION 3.1)
+
+# VASM is an extra asm language configured in our cmake platform,
+# to cross-assemble with vasm assembler installed by bebbo gcc
+set(CMAKE_C_STANDARD 11)
+project(BoopsiWizard LANGUAGES C VERSION 1.0)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(VERSTRING "1.0")
+
+set(COMMONLIBS "../../../amigacommonlibs")
+
+set(ZLIBPATH "${COMMONLIBS}/zlib")
+add_subdirectory(${ZLIBPATH} zlib)
+
+# exe that consume the .class
+add_executable(BoopsiWizard
+		compilers.h
+		boopsiinlines.h
+		boopsiwizard.c
+		extracttemplate.c
+		unzip.c
+		unzip.h
+		)
+
+target_compile_options(BoopsiWizard PRIVATE -Os -save-temps -m68000 )
+target_link_options(BoopsiWizard PRIVATE -s )
+target_include_directories(BoopsiWizard PUBLIC ${ZLIBPATH} )
+target_link_libraries(BoopsiWizard PUBLIC z )
+install(TARGETS BoopsiWizard DESTINATION "${CMAKE_SOURCE_DIR}/..")
