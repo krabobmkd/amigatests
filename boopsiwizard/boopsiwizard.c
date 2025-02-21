@@ -33,10 +33,14 @@
 #include <proto/label.h>
 #include <images/label.h>
 
+#include <proto/string.h>
+#include <gadgets/string.h>
+
 #include "compilers.h"
 
 
 #include "boopsiinlines.h"
+
 
 typedef ULONG (*REHOOKFUNC)();
 
@@ -56,6 +60,7 @@ struct Library *BitMapBase=NULL;
 struct Library *ButtonBase=NULL;
 struct Library *LabelBase=NULL;
 struct Library *CheckBoxBase=NULL;
+struct Library *StringBase=NULL;
 
 void cleanexit(const char *pmessage)
 {
@@ -102,24 +107,30 @@ struct App
     ULONG   fontHeight; // some stat to size according to current font.
 
     Object *mainvlayout;
-        Object *horizontallayout;
-            Object *testbt;
-            Object *kbdview;
-        Object *bottombarlayout;
-            Object *label1;
-            Object *labelValues;
-            Object *disablecheckbox;
+        Object *horizontallayoutA;
+            Object *titlelabel;
+        Object *horizontallayoutB;
+            Object *templateList;
+            // switch page
+            Object *vertlayout_temp;
+            // status bar
+        Object *horizontallayoutC;
+            Object *statusBarBtlabel;
+//        Object *bottombarlayout;
+//            Object *label1;
+//            Object *labelValues;
+//            Object *disablecheckbox;
 };
 // Boopsi class pointer to manage our private modelclass.
 Class *AppModelClass = NULL;
 // App Model instance as a Boopsi object.
-struct Object *AppInstance = NULL;
+Object *AppInstance = NULL;
 // App Modelinstance as our private struct.
 struct App *app=NULL;
 
 ULONG ASM SAVEDS AppModelDispatch(
                     REG(a0,struct IClass *C),
-                    REG(a2,struct Object *obj),
+                    REG(a2,Object *obj),
                     REG(a1,union MsgUnion *M))
 {
     // Warning: this is executed on "intuition's context", can't use dos nor print, like for interupts.
@@ -129,7 +140,7 @@ ULONG ASM SAVEDS AppModelDispatch(
     case OM_NEW:
         if(obj=(Object *)DoSuperMethodA(C,(Object *)obj,(Msg)M))
         {
-            app=INST_DATA(C, obj);
+            app=(struct App *)INST_DATA(C, obj);
             retval = (ULONG)obj;
         }
     break;
@@ -146,29 +157,29 @@ ULONG ASM SAVEDS AppModelDispatch(
             // our gadget is notifying new clicked coordinates!
             if( sender_ID == GAD_KEYBOARDVIEW_TOTEST )
             {   // table used as parameter for the button internal sprintf() formating
-                LONG centerXY[2];
-                if((ptag = FindTagItem( KEYBOARDVIEW_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
-                    centerXY[0] = ((UWORD)ptag->ti_Data * 100)>>16; // get percent
-                if((ptag = FindTagItem( KEYBOARDVIEW_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
-                    centerXY[1] = ((UWORD)ptag->ti_Data * 100)>>16;
+//                LONG centerXY[2];
+//                if((ptag = FindTagItem( KEYBOARDVIEW_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
+//                    centerXY[0] = ((UWORD)ptag->ti_Data * 100)>>16; // get percent
+//                if((ptag = FindTagItem( KEYBOARDVIEW_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
+//                    centerXY[1] = ((UWORD)ptag->ti_Data * 100)>>16;
 
-                if(app->labelValues)
-                {
-                    // display coords in button label with formatting:
-                    SetGadgetAttrs((struct Gadget *)app->labelValues,app->win,NULL,
-                        GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
-                        BUTTON_VarArgs,(ULONG) &centerXY[0],
-                        TAG_END);
-                }
+//                if(app->labelValues)
+//                {
+//                    // display coords in button label with formatting:
+//                    SetGadgetAttrs((struct Gadget *)app->labelValues,app->win,NULL,
+//                        GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
+//                        BUTTON_VarArgs,(ULONG) &centerXY[0],
+//                        TAG_END);
+//                }
                 retval = 1;
             } else if(sender_ID == GAD_DISABLECHECKBOX)
             {   // also works, but would be activated for all attribs sent:
                 //ULONG v;
                 //GetAttr(GA_SELECTED, app->disablecheckbox, &v);
-                if((ptag = FindTagItem( GA_SELECTED,M->opUpdate.opu_AttrList ))!=NULL)
-                {   // checkbox sent new Disable value.
-                    SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,ptag->ti_Data,TAG_END);
-                }
+//                if((ptag = FindTagItem( GA_SELECTED,M->opUpdate.opu_AttrList ))!=NULL)
+//                {   // checkbox sent new Disable value.
+//                    SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,ptag->ti_Data,TAG_END);
+//                }
             }
             else // if ...other receive mamangement... else
             {
@@ -191,7 +202,7 @@ int initAppModel(void)
 
     AppModelClass->cl_Dispatcher.h_Entry = (REHOOKFUNC) &AppModelDispatch;
 
-    AppInstance = NewObject( AppModelClass, NULL, TAG_DONE);
+    AppInstance = (Object *)NewObject( AppModelClass, NULL, TAG_DONE);
     if(!AppInstance) return 0;
 
     return 1;
@@ -210,6 +221,7 @@ int main(int argc, char **argv)
 {
     atexit(&exitclose);
 
+ 
     // - - - - open libraries...
 
     if ( ! (IntuitionBase = (struct IntuitionBase*)OpenLibrary("intuition.library",33)))
@@ -249,13 +261,8 @@ int main(int argc, char **argv)
    if ( ! (CheckBoxBase = OpenLibrary("gadgets/checkbox.gadget",44)))
        cleanexit("Can't open checkbox.gadget");
 
-#ifdef KEYBOARDVIEW_STATICLINK
-    if(KeyboardView_static_class_init()) cleanexit("Can't create private class");
-#else
-    if ( ! (KeyBoardViewBase = OpenLibrary("keyboardview.gadget",VERSION_KEYBOARDVIEW)))
-        cleanexit("Can't open keyboardview.gadget");
-#endif
-
+    if ( ! (StringBase = OpenLibrary("gadgets/string.gadget",44)))
+        cleanexit("Can't open string.gadget");
 
     if(!initAppModel())  cleanexit("Can't create app");
 
@@ -270,7 +277,7 @@ int main(int argc, char **argv)
     // let's size according to font height.
     app->fontHeight = 8+4; // default;
     if(app->drawInfo && app->drawInfo->dri_Font) app->fontHeight =app->drawInfo->dri_Font->tf_YSize + 4;
-
+/*
     app->testbt = (Object *)NewObject( NULL, "button.gadget",
                                     GA_DrawInfo, app->drawInfo,
                               //      GA_TextAttr, &garnet16,
@@ -281,24 +288,6 @@ int main(int argc, char **argv)
 
 
     if(!app->testbt) cleanexit("Can't button");
-
-
-#ifdef KEYBOARDVIEW_STATICLINK
-        app->kbdview = NewObject(KeyboardViewClassPtr, NULL,
-            GA_DrawInfo, app->drawInfo,
-            GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
-            ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                TAG_END);
-#else
-        app->kbdview = NewObject(NULL, KeyboardView_CLASS_ID,
-            GA_DrawInfo, app->drawInfo,
-            GA_ID,      GAD_KEYBOARDVIEW_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
-            ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                TAG_END);
-#endif
-
-
-    if(!app->kbdview) cleanexit("Can't create kbdview");
 
     app->horizontallayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
@@ -328,13 +317,7 @@ int main(int argc, char **argv)
                         BUTTON_Justification, BCJ_CENTER,
                         GA_Text,(ULONG)"...",
                     TAG_END);
- {
-    /* ICA_MAP doesnt work and would trash the attribs of the target if it's another gadget...
-    struct TagItem attribToAttribMapping[] =
-    {
-        {GA_SELECTED, GA_DISABLED},
-        {TAG_END, }
-    };*/
+
 
     app->disablecheckbox = (Object *)NewObject( CHECKBOX_GetClass(), NULL,
                     GA_DrawInfo,(ULONG) app->drawInfo,
@@ -345,7 +328,7 @@ int main(int argc, char **argv)
                  GA_ID,GAD_DISABLECHECKBOX,
                  ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
                 TAG_END);
- }
+
     if(!app->disablecheckbox) cleanexit("Can't create checkbox");
 
     app->bottombarlayout =
@@ -368,7 +351,7 @@ int main(int argc, char **argv)
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);
         app->mainvlayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
             GA_DrawInfo, app->drawInfo,
-            LAYOUT_DeferLayout, TRUE, /* Layout refreshes done on task's context (by thewindow class) */
+            LAYOUT_DeferLayout, TRUE, // Layout refreshes done on task's context (by thewindow class)
             LAYOUT_SpaceOuter, TRUE,
             LAYOUT_BottomSpacing, 4,
             LAYOUT_HorizAlignment, LALIGN_RIGHT,
@@ -380,22 +363,22 @@ int main(int argc, char **argv)
         if (!app->mainvlayout) cleanexit("layout error 3");
     } //end if screen
 
-
+*/
     app->app_port = CreateMsgPort();
 
     /* Create the window object. */
     app->window_obj = (Object *)NewObject( WINDOW_GetClass(), NULL,
         WA_Left, 0,
-        WA_Top, app->lockedscreen->Font->ta_YSize + 3,
-        WA_CustomScreen, app->lockedscreen,
-        WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY /*| IDCMP_VANILLAKEY*/, // we want localized keys , not the raws.
+        WA_Top, (ULONG)(app->lockedscreen->Font->ta_YSize) + 3,
+        WA_CustomScreen, (ULONG) app->lockedscreen,
+        WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY ,
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
-        WA_Title, "KeyboardView Test",
-        WINDOW_ParentGroup, app->mainvlayout,
+        WA_Title,(ULONG) "Boopsi Wizard",
+        WINDOW_ParentGroup,(ULONG) app->mainvlayout,
         WINDOW_IconifyGadget, TRUE,
-        WINDOW_Icon, GetDiskObject("PROGDIR:ReAction"),
-        WINDOW_IconTitle, "KeyboardView Test",
-        WINDOW_AppPort, app->app_port,
+        WINDOW_Icon,(ULONG) GetDiskObject("PROGDIR:ReAction"),
+        WINDOW_IconTitle,(ULONG)  "Boopsi Wizard",
+        WINDOW_AppPort, (ULONG)app->app_port,
     TAG_END);
     if(!app->window_obj) cleanexit("can't create window");
 
@@ -442,10 +425,10 @@ int main(int argc, char **argv)
                                 // does the button action.
                                 // change attributes of the gadget we created:
                                 // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
-                                SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL,
-                                    KEYBOARDVIEW_CenterX, 32768,
-                                    KEYBOARDVIEW_CenterY, 32768,
-                                    TAG_DONE);
+//                                SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL,
+//                                    KEYBOARDVIEW_CenterX, 32768,
+//                                    KEYBOARDVIEW_CenterY, 32768,
+//                                    TAG_DONE);
                             break;
 
                         /*
@@ -543,21 +526,21 @@ void exitclose(void)
          */
         if(app->window_obj) DisposeObject(app->window_obj);
         else {
-            // but if not attached because mid-init fail, has to be manual.
-            if(app->mainvlayout)  DisposeObject(app->mainvlayout);
-            else {
-                if(app->horizontallayout) DisposeObject(app->horizontallayout);
-                else {
-                    if(app->testbt) DisposeObject(app->testbt);
-                    if(app->kbdview) DisposeObject(app->kbdview);
-                }
-                if(app->bottombarlayout) DisposeObject(app->bottombarlayout);
-                else {
-                    if(app->label1) DisposeObject(app->label1);
-                    if(app->labelValues) DisposeObject(app->labelValues);
-                    if(app->disablecheckbox) DisposeObject(app->disablecheckbox);
-                }
-            }
+//            // but if not attached because mid-init fail, has to be manual.
+//            if(app->mainvlayout)  DisposeObject(app->mainvlayout);
+//            else {
+//                if(app->horizontallayout) DisposeObject(app->horizontallayout);
+//                else {
+//                    if(app->testbt) DisposeObject(app->testbt);
+//                    if(app->kbdview) DisposeObject(app->kbdview);
+//                }
+//                if(app->bottombarlayout) DisposeObject(app->bottombarlayout);
+//                else {
+//                    if(app->label1) DisposeObject(app->label1);
+//                    if(app->labelValues) DisposeObject(app->labelValues);
+//                    if(app->disablecheckbox) DisposeObject(app->disablecheckbox);
+//                }
+//            }
         }
 
         if(app->drawInfo) FreeScreenDrawInfo(app->lockedscreen, app->drawInfo);
@@ -566,12 +549,6 @@ void exitclose(void)
     }
     closeAppModel();
 
-
-#ifndef KEYBOARDVIEW_STATICLINK
-    if(KeyBoardViewBase) CloseLibrary(KeyBoardViewBase);
-#else
-    KeyboardView_static_class_close();
-#endif
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
     if(LabelBase) CloseLibrary(LabelBase);
     if(ButtonBase) CloseLibrary(ButtonBase);

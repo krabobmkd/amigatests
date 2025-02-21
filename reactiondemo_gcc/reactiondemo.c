@@ -192,6 +192,10 @@ int main(void)
     if ( ! (GfxBase = (struct GfxBase *)OpenLibrary("graphics.library",39)))
         cleanexit("Can't open graphics.library");
 
+    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
+        cleanexit("Can't open checkbox.gadget");
+
+
     if ( ! (WindowBase = OpenLibrary("window.class",44)))
         cleanexit("Can't open window.class");
 
@@ -204,8 +208,7 @@ int main(void)
     if ( ! (ButtonBase = OpenLibrary("gadgets/button.gadget",44)))
         cleanexit("Can't open button.gadget");
 
-    if ( ! (CheckBoxBase = OpenLibrary("gadget/checkbox.gadget",44)))
-        cleanexit("Can't open checkbox.gadget");
+
 
     if ( ! (ChooserBase = OpenLibrary("gadgets/chooser.gadget",44)))
         cleanexit("Can't open chooser.gadget");
