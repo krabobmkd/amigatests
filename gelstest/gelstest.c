@@ -13,9 +13,10 @@
 
 struct Screen *pLockedScreen=NULL;
 struct Window *w=NULL;
-struct BitMap *bm=NULL;
-PLANEPTR bm_mask=NULL;
+//struct BitMap *bm=NULL;
+//PLANEPTR bm_mask=NULL;
 
+DtBm DtBitmap;
 
 /* Create a Bob from the information given in nBob.  Use freeBob() to free this GEL.
 ** A VSprite is created for this bob.  This routine properly allocates all double
@@ -84,7 +85,7 @@ PLANEPTR bm_mask=NULL;
 
 
 
-int init(struct Screen *pScreen)
+int initWindow(struct Screen *pScreen)
 {
 
     // init gels
@@ -146,9 +147,6 @@ int init(struct Screen *pScreen)
 
     } // end if window todo
 
-    int res = LoadDataTypeToBm("chunli.gif",&bm,&bm_mask,pScreen);
-    printf("loadbm: %d BM: %08x\n",res,(int)bm);
-
     return 0;
 }
 
@@ -164,11 +162,8 @@ void exitclose()
         CloseWindow(w);
         w = NULL;
     }
-    if(bm)
-    {
-        FreeBitMap(bm);
-        bm=NULL;
-    }
+    closeDataTypeBm(&DtBitmap);
+
 }
 
 int main(int argc, char **argv)
@@ -178,7 +173,15 @@ int main(int argc, char **argv)
     if (!(pLockedScreen = LockPubScreen(NULL))
             ) return 1;
 
-    if(init(pLockedScreen)) return 1;
+    if(initWindow(pLockedScreen)) return 1;
+
+    int res = LoadDataTypeToBm8b("woot.gif",&DtBitmap,pLockedScreen);
+    printf("loadbm: %d BM: %08x\n",res,(int)DtBitmap.bm);
+
+    struct  GelsInfo *gi = pLockedScreen->RastPort.GelsInfo;
+
+    Printf("GelsInfo:%lx\n",(int)gi);
+    if(!gi) return 1; // workbench has gelslist
 
     // - - - -
     int iquit=0;

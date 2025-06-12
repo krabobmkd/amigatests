@@ -5,10 +5,14 @@
 
 struct BitMap;
 
-int LoadDataTypeToBm(const char *pFileName,
-                        struct BitMap **presult,
-                        UBYTE   **pmaskplane,struct Screen *pDestScreen);
+typedef struct {
+    void *obj ;
+    struct BitMap *bm;
+} DtBm;
 
+int LoadDataTypeToBm8b(const char *pFileName,
+                        DtBm *DtBm,struct Screen *pDestScreen);
+void closeDataTypeBm(DtBm *DtBm);
 #endif
 
 

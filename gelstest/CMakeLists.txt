@@ -46,5 +46,11 @@ if(AMIGA)
 
 endif()
 
-add_executable(gelstest gelstest.c datatypebm.c datatypebm.h animtools.c animtools.h )
+add_executable(gelstest
+	gelstest.c
+	datatypebm.c
+	datatypebm.h
+	animtools.c
+	animtools.h
+	animtools_proto.h )
 
