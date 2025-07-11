@@ -3,6 +3,6 @@
 
 #include "rtgdpfs.h"
 
-struct rtg_dpf_screen* Create_dualplayfield_screen_OCS();
+struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1height,int pf2width,int pf2height);
 
 #endif

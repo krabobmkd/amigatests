@@ -17,8 +17,8 @@ add_executable(testrtgdpf
 		rtgdpfs_P96.h
 		rtgdpfs_OCS.c 
 		rtgdpfs_OCS.h		
-		../datatypebm8b.c
-		../datatypebm8b.h		
+		datatypebm8b.c
+		datatypebm8b.h
 		)
 target_include_directories(testrtgdpf PRIVATE . ..)
 

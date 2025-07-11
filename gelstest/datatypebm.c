@@ -12,7 +12,7 @@
 
 #include "datatypebm.h"
 int LoadDataTypeToBm8b(const char *pFileName,
-                         DtBm *DtBm,struct Screen *pDestScreen)
+                         DtBm *DtBm,PLANEPTR *maskPlane,struct Screen *pDestScreen)
 {
     UBYTE                   *chunk;
     int                 chunksize,nbc;
@@ -68,6 +68,11 @@ int LoadDataTypeToBm8b(const char *pFileName,
 
 //    if( bmhd->bmh_Depth >8 ) { DisposeDTObject( obj );    return(3); }
     GetAttr(   PDTA_DestBitMap,  DtBm->obj,    (ULONG *) &DtBm->bm );
+
+    if(maskPlane)
+    {
+        GetAttr(   PDTA_DestBitMap,  DtBm->obj, (ULONG *) maskPlane );
+    }
 
 //    if (bm == NULL) {   GetAttr(   PDTA_BitMap,   obj,    (ULONG *) &bm ); }
     if (DtBm->bm == NULL) { DisposeDTObject( DtBm->obj ); DtBm->obj = NULL;  return(4);   }

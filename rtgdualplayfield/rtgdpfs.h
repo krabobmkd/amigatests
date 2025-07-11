@@ -3,8 +3,9 @@
 
 #include <exec/types.h>
 
-struct BitMap;
-struct UserPort;
+struct MsgPort;
+struct Screen;
+struct RastPort;
 
 // abstract interface to be implemented
 struct rtg_dpf_screen {
@@ -14,7 +15,14 @@ struct rtg_dpf_screen {
 
 	void (*setscroll)(struct rtg_dpf_screen* pthis, int scrollx1, int scrolly1, int scrollx2, int scrolly2);
 
-	struct UserPort *userPort;
+	struct MsgPort *_userPort;
+
+	struct Screen *_screen;
+
+	struct RastPort *_pf1rp;
+	struct RastPort *_pf2rp;
+
+
 };
 
 

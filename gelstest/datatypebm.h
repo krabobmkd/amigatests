@@ -11,7 +11,7 @@ typedef struct {
 } DtBm;
 
 int LoadDataTypeToBm8b(const char *pFileName,
-                        DtBm *DtBm,struct Screen *pDestScreen);
+                        DtBm *DtBm,PLANEPTR *maskPlane,struct Screen *pDestScreen);
 void closeDataTypeBm(DtBm *DtBm);
 #endif
 

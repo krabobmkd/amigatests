@@ -5,7 +5,7 @@
 struct Library;
 //extern struct Library *;
 
-struct rtg_dpf_screen* Create_dualplayfield_screen_P96();
+struct rtg_dpf_screen* Create_dualplayfield_screen_P96(int height);
 
 
 #endif
