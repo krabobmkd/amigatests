@@ -7,16 +7,30 @@
 #include <proto/graphics.h>
 #include <proto/intuition.h>
 #include <exec/ports.h>
+#include <hardware/intbits.h>
 
 struct rtg_dpf_screen* DualScreen = NULL;
 
 DtBm someBitmap;
 PLANEPTR someMaskPlane=NULL;
-
+UBYTE   *somePalette=NULL;
 void exitclose();
+
+// - - - use a vertical blank interuption each 50 or 60Hz to manage some animation.
+struct Task				*myTask;
+//int __interrupt __saveds VBlankInterface( void );
+
+int VBlankInterface();
+struct Interrupt VertBlank =
+{	NULL,NULL,NT_INTERRUPT,-60,"DPF VBlank",		/* node, pri = -60 */
+	NULL,										/* data ptr, same as inputevent */
+	(void *)VBlankInterface						/* code ptr */
+};
+int vblank_ok=0;
 
 int main(int argc, char** argv)
 {
+	myTask = FindTask(NULL);
 	atexit(&exitclose);
 	// this creates a 8color + 8 color dpf or 16 color + 16 color dpf.
 	DualScreen = rtgdpfs_createBestImplementation(320+80,256+64,320+80,256+64);
@@ -26,34 +40,59 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-
     someBitmap.bm = NULL;
-    int res = LoadDataTypeToBm8b("woot.gif",&someBitmap,&someMaskPlane,DualScreen->_screen);
+    int res = LoadDataTypeToBm8b("woot.png",&someBitmap,&someMaskPlane,&somePalette,/*DualScreen->_screen*/NULL);
     printf("loadbm: %d BM: %08x\n",res,(int)someBitmap.bm);
+
+    // set palette
+    if(somePalette)
+    {
+        DualScreen->setPalette(DualScreen,somePalette,someBitmap.nbColors,0);
+    }
 
     //copy bm
     if(someBitmap.bm)
     {
         printf("w:%d h:%d d:%d \n",(int)someBitmap.bm->BytesPerRow<<3,someBitmap.bm->Rows,(int)someBitmap.bm->Depth);
 
-        BltMaskBitMapRastPort( someBitmap.bm, //source bm
+        BltBitMapRastPort( someBitmap.bm, //source bm
                     0, 0, // source x,y
                     DualScreen->_pf1rp,  // dest rp
                  8, 8, // dest x,y
-                 someBitmap.bm->BytesPerRow<<3,  someBitmap.bm->Rows,//size
-                0x00c0, // copy minterm
+                 someBitmap.width,  someBitmap.height,//size
+                (ABC|ABNC|ANBC)//, // copy with mask minterm
+               // someMaskPlane //bltmask
+                 );
+
+        BltMaskBitMapRastPort( someBitmap.bm, //source bm
+                    0, 0, // source x,y
+                    DualScreen->_pf1rp,  // dest rp
+                 8+20, 8+12, // dest x,y
+                 someBitmap.width,  someBitmap.height,//size
+                (ABC|ABNC|ANBC), // copy with mask minterm
                 someMaskPlane //bltmask
                  );
+
+       for(int i=0;i<16;i++)
+       {
+           SetAPen(DualScreen->_pf1rp,i);
+           RectFill(DualScreen->_pf1rp,i*8 + 32,120,32+8+i*8,128);
+       }
+
 
         BltMaskBitMapRastPort( someBitmap.bm, //source bm
                     0, 0, // source x,y
                     DualScreen->_pf2rp,  // dest rp
                  30, 40, // dest x,y
-                 someBitmap.bm->BytesPerRow<<3,  someBitmap.bm->Rows,//size
-                0x00c0, // copy minterm
+                 someBitmap.width,  someBitmap.height,//size
+             (ABC|ABNC|ANBC), // copy minterm
                 someMaskPlane //bltmask
                  );
-
+       for(int i=0;i<16;i++)
+       {
+           SetAPen(DualScreen->_pf2rp,i);
+           RectFill(DualScreen->_pf2rp,i*8 + 32,140,32+8+i*8,148);
+       }
 
 //        BltBitMapRastPort( someBitmap.bm,//CONST struct BitMap *srcBitMap,
 //               0,0, //LONG xSrc, LONG ySrc,
@@ -72,7 +111,10 @@ int main(int argc, char** argv)
 //               );
 
     }
-    DualScreen->setscroll(DualScreen,0,0,16,16);
+
+
+	AddIntServer(INTB_VERTB, &VertBlank);
+	vblank_ok = TRUE;
 
     // - - - -
     {
@@ -82,9 +124,18 @@ int main(int argc, char** argv)
     {
         struct IntuiMessage *im;
         int doDraw=0;
-        ULONG bitsToWait = 1 << (DualScreen->_userPort->mp_SigBit);
-        Wait(bitsToWait);
+        ULONG bitsToWait = (1 << (DualScreen->_userPort->mp_SigBit)) | SIGBREAKF_CTRL_F ;
+        ULONG signals = Wait(bitsToWait);
 
+        if(signals & SIGBREAKF_CTRL_F)
+        {
+            // vertb timer
+            static int itimer =0;
+            itimer++;
+            int dx =   itimer & 63;
+            if(dx>32) dx = 63-dx;
+            DualScreen->setscroll(DualScreen,32-dx,0,32+dx,32+dx);
+        }
         while((im = (struct IntuiMessage *) GetMsg(DualScreen->_userPort)))
         {
             ULONG imclass = im->Class;
@@ -121,7 +172,15 @@ int main(int argc, char** argv)
 
 void exitclose()
 {
+    if(vblank_ok) {
+     RemIntServer(INTB_VERTB, &VertBlank);
+    }
     closeDataTypeBm(&someBitmap);
 	if(DualScreen) DualScreen->close(DualScreen);
 	DualScreen = NULL;
+}
+
+int VBlankInterface( void )
+{	Signal(myTask,SIGBREAKF_CTRL_F);
+	return 0; /* server chain continues		*/
 }

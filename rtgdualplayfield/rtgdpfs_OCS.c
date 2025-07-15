@@ -80,24 +80,47 @@ static void ocs_close(struct rtg_dpf_screen_ocs *pthis)
     if(pthis->_rasinfo2) FreeVec(pthis->_rasinfo2);
     FreeVec(pthis);
 }
-static void ocs_copyBm(struct rtg_dpf_screen_ocs* pthis,int ipf,int x,int y,struct BitMap *bm)
-{
 
-}
-
-static void ocs_setscroll(struct rtg_dpf_screen_ocs* pthis, int scrollx1, int scrolly1, int scrollx2, int scrolly2)
+void ocs_setPalette(struct rtg_dpf_screen_ocs* pthis,const UBYTE *ppalette, int nbcolors, int iPlayfield)
 {
     struct Screen *pscreen = NULL;
     if(!pthis || pthis->_super._screen==NULL) return;
     pscreen = pthis->_super._screen;
 
-    pscreen->ViewPort.DxOffset = scrollx1;
-    pscreen->ViewPort.DyOffset = scrolly1;
+    for(int i=0;i<nbcolors ; i++)
+    {
+         ULONG r = ((ULONG)*ppalette++)<<24;
+          ULONG g = ((ULONG)*ppalette++)<<24;
+         ULONG b = ((ULONG)*ppalette++)<<24;
 
-    pthis->_rasinfo2->RxOffset = scrollx2;
-    pthis->_rasinfo2->RyOffset = scrolly2;
+        SetRGB32( &(pscreen->ViewPort),i,  r,  g,  b );
+    }
 
-    ScrollVPort(&(pscreen->ViewPort));
+}
+
+
+static void ocs_setscroll(struct rtg_dpf_screen_ocs* pthis, WORD scrollx1, WORD scrolly1, WORD scrollx2, WORD scrolly2)
+{
+    struct Screen *pscreen = NULL;
+    if(!pthis || pthis->_super._screen==NULL) return;
+    pscreen = pthis->_super._screen;
+
+    // ScrollVPort could be heavy for some drivers
+    if( scrollx1 != pscreen->ViewPort.DxOffset ||
+        scrolly1 != pscreen->ViewPort.DyOffset ||
+
+        scrollx2 != pthis->_rasinfo2->RxOffset ||
+        scrolly2 != pthis->_rasinfo2->RyOffset
+        )
+       {
+            pscreen->ViewPort.DxOffset = scrollx1;
+            pscreen->ViewPort.DyOffset = scrolly1;
+
+            pthis->_rasinfo2->RxOffset = scrollx2;
+            pthis->_rasinfo2->RyOffset = scrolly2;
+
+            ScrollVPort(&(pscreen->ViewPort));
+       }
 
 }
 
@@ -162,7 +185,8 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
     if(!pthis) return NULL;
 
     pthis->_super.close = ocs_close;
-    pthis->_super.copyBm = ocs_copyBm;
+   // pthis->_super.copyBm = ocs_copyBm;
+    pthis->_super.setPalette = ocs_setPalette;
     pthis->_super.setscroll = ocs_setscroll;
 
     // - - - - -
@@ -218,7 +242,7 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
 
     pthis->_super._screen = OpenScreenTags( NULL,
 			SA_DisplayID,pthis->_modeid,
-                        SA_Title, (ULONG)"DPF", // used as ID by promotion tools and else ?
+                        SA_Title, (ULONG)"DualPF", // used as ID by promotion tools and else ?
                         SA_Width, pf1width,
                         SA_Height,pf1height,
                         SA_Depth,4,
