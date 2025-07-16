@@ -1,4 +1,5 @@
 #include "rtgdpfs_OCS.h"
+#include "extrarastport.h"
 #include <proto/exec.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>
@@ -9,70 +10,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-
-struct ExtraRastPort {
-    struct BitMap *_bm;
-    struct RastPort *_rp;
-    struct Layer_Info *_layerinfo;
-    struct Layer *_layer;
-};
-
-void CloseExtraRastPort(struct ExtraRastPort *erp);
-int OpenExtraRastPort(struct ExtraRastPort *erp,int width, int height,int depth, struct BitMap *friend);
-
-void CloseExtraRastPort(struct ExtraRastPort *erp)
-{
-    if(!erp) return;
-    if(erp->_layer) DeleteLayer (0,erp->_layer);
-    erp->_layer = NULL;
-
-    if(erp->_layerinfo) DisposeLayerInfo(erp->_layerinfo);
-    erp->_layerinfo = NULL;
-    erp->_rp = NULL;
-    if(erp->_bm) FreeBitMap(erp->_bm);
-    erp->_bm = NULL;
-
-}
-
-int OpenExtraRastPort(struct ExtraRastPort *erp,int width, int height,int depth, struct BitMap *friend)
-{
-    if(!erp) return 0;
-    erp->_bm = AllocBitMap(width,height,depth,BMF_CLEAR,friend);
-    if(!erp->_bm) return 0;
-
-    erp->_layerinfo = NewLayerInfo();
-    if(!erp->_layerinfo) {  CloseExtraRastPort(erp); return 0; }
-
-    erp->_layer = CreateUpfrontLayer(erp->_layerinfo, erp->_bm, 0, 0, width - 1, height - 1, 0, NULL);
-    if(!erp->_layer) {  CloseExtraRastPort(erp); return 0; }
-
-    erp->_rp = erp->_layer->rp;
-    printf("rp2._rp:%08x\n",(int)erp->_rp);
-    return 1;
-}
-
-// - - -- -
-
 struct rtg_dpf_screen_ocs {
 
     struct rtg_dpf_screen _super;
 
     struct Window *_win_backdrop;
-    struct BitMap *_bm_pf1;
-    //struct BitMap *_bm_pf2;
 
     ULONG _modeid;
     ULONG _width,_height;
 
-    struct ExtraRastPort _pf2rp;
+    struct ExtraRastPortAndBm _pf2rp;
     struct RasInfo *_rasinfo2;
 };
 
 static void ocs_close(struct rtg_dpf_screen_ocs *pthis)
 {
     if(!pthis) return;
-    CloseExtraRastPort(&pthis->_pf2rp);
+    CloseExtraRastPortAndBm(&pthis->_pf2rp);
 
     if(pthis->_win_backdrop) CloseWindow(pthis->_win_backdrop);
     if(pthis->_super._screen)   CloseScreen(pthis->_super._screen);
@@ -223,12 +177,7 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
         }
    }
     printf("nominal %d %d\n",pthis->_width,pthis->_height);
-//    struct rtg_dpf_screen _super;
 
-//    struct Screen *_screen;
-//    struct Screen *_win_backdrop;
-//    struct BitMap *_bm_pf1;
-//    struct BitMap *_bm_pf2;
 	struct ColorSpec colspec[8]={ // let's do it amiga default like
                 0,  0,0,0, //black
                 1,  8,8,8,  // grey
@@ -264,7 +213,7 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
 
 //if ( rinfo2 != NULL )
 	// alloc pf2 bitmap, use gfx drawable rastport since we're at it:
-	if(OpenExtraRastPort(&pthis->_pf2rp,pf2width,pf2height,4,
+	if(OpenExtraRastPortAndBm(&pthis->_pf2rp,pf2width,pf2height,4,
             pthis->_super._screen->RastPort.BitMap
             )==0)
 	{
