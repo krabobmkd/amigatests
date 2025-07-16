@@ -8,15 +8,30 @@
 #include <graphics/gels.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "datatypebm.h"
-
+#include <graphics/gels.h>
+#include "datatypebm8b.h"
+#include <hardware/intbits.h>
 struct Screen *pLockedScreen=NULL;
 struct Window *w=NULL;
 //struct BitMap *bm=NULL;
 //PLANEPTR bm_mask=NULL;
 
 DtBm DtBitmap;
+PLANEPTR BitmapMask=NULL;
+
+
+// - - - use a vertical blank interuption each 50 or 60Hz to manage some animation.
+struct Task				*myTask=NULL;
+//int __interrupt __saveds VBlankInterface( void );
+
+int VBlankInterface();
+struct Interrupt VertBlank =
+{	NULL,NULL,NT_INTERRUPT,-60,"DPF VBlank",		/* node, pri = -60 */
+	NULL,										/* data ptr, same as inputevent */
+	(void *)VBlankInterface						/* code ptr */
+};
+int vblank_ok=0;
+
 
 /* Create a Bob from the information given in nBob.  Use freeBob() to free this GEL.
 ** A VSprite is created for this bob.  This routine properly allocates all double
@@ -152,6 +167,10 @@ int initWindow(struct Screen *pScreen)
 
 void exitclose()
 {
+    if(vblank_ok) {
+     RemIntServer(INTB_VERTB, &VertBlank);
+    }
+
     if(pLockedScreen)
     {
         UnlockPubScreen(NULL,pLockedScreen);
@@ -165,6 +184,49 @@ void exitclose()
     closeDataTypeBm(&DtBitmap);
 
 }
+void traceGels(struct  GelsInfo *gi)
+{
+    printf(" **** Gels: box left:%d right:%d top:%d bottom:%d\n",
+                (int)gi->leftmost, (int)gi->rightmost,(int)gi->topmost, (int)gi->bottommost);
+
+    struct VSprite *gel = gi->gelHead;
+    while(gel)
+    {
+        printf("gel:\n\tDrawPath:%08x ClearPath:%08x\n",(int)gel->DrawPath,(int)gel->ClearPath);
+        printf("\tWidth:%d Height:%d d:%d\n",(int)gel->Width,(int)gel->Height,(int)gel->Depth);
+       printf("\tImageData:%08x\n",(int)gel->ImageData);
+
+        gel = gel->NextVSprite;
+    }
+    printf("*** gels end\n");
+}
+// icone wb: 4,49,1
+
+struct VSprite g_gelcaught={0};
+int g_w=0,g_h=0,g_i=-1;
+struct  GelsInfo *g_gi=NULL;
+void getGelsSize(struct  GelsInfo *gi)
+{
+    struct VSprite *gel = gi->gelHead;
+    int ig=0;
+    while(gel)
+    {
+        if(gel->Width !=0 || gel->Height !=0)
+        {
+            if(g_w ==0 && g_h==0)
+            {
+                g_gelcaught = *gel;
+                  g_i = ig;
+            }
+        }
+        gel = gel->NextVSprite;
+        ig++;
+    }
+
+}
+
+
+
 
 int main(int argc, char **argv)
 {
@@ -175,20 +237,36 @@ int main(int argc, char **argv)
 
     if(initWindow(pLockedScreen)) return 1;
 
-    int res = LoadDataTypeToBm8b("woot.gif",&DtBitmap,pLockedScreen);
+	myTask = FindTask(NULL);
+	AddIntServer(INTB_VERTB, &VertBlank);
+	vblank_ok = TRUE;
+
+    int res = LoadDataTypeToBm8b("woot.png",&DtBitmap,&BitmapMask,NULL,pLockedScreen);
     printf("loadbm: %d BM: %08x\n",res,(int)DtBitmap.bm);
-
-    struct  GelsInfo *gi = pLockedScreen->RastPort.GelsInfo;
-
-    Printf("GelsInfo:%lx\n",(int)gi);
-    if(!gi) return 1; // workbench has gelslist
 
     // - - - -
     int iquit=0;
     while(!iquit) // (im = (struct IntuiMessage *) GetMsg(pMsgPort)))
     {
-        ULONG bitsToWait = 1 << (w->UserPort->mp_SigBit);
-        Wait(bitsToWait);
+        ULONG bitsToWait = (1 << (w->UserPort->mp_SigBit)) | SIGBREAKF_CTRL_F;
+        ULONG signals = Wait(bitsToWait);
+
+g_gi = pLockedScreen->RastPort.GelsInfo;
+        if(signals & SIGBREAKF_CTRL_F)
+        {
+            // vertb timer
+            static int itimer =0;
+            itimer++;
+            if(((itimer>>1) & 63) == 0)
+            {
+                printf("w:%d h:%d i:%d\n",g_gelcaught.,g_h,g_i);
+//                struct  GelsInfo *gi = pLockedScreen->RastPort.GelsInfo;
+//                if(gi)
+//                {
+//                    traceGels(gi);
+//                }
+            }
+        }
 
         struct IntuiMessage *im;
         while((im = (struct IntuiMessage *) GetMsg(w->UserPort)))
@@ -235,4 +313,34 @@ int main(int argc, char **argv)
     } // end while no quit.
 
     return 0;
+}
+
+int VBlankInterface( void )
+{	Signal(myTask,SIGBREAKF_CTRL_F);
+
+    if(g_gi) getGelsSize(g_gi);
+	return 0; /* server chain continues		*/
+}
+
+
+/* tests....
+ perlin noise cache
+*/
+ULONG seed=0x8781e35a;
+UBYTE basenoise(UWORD y,UWORD x)
+{
+
+}
+
+// 16bit UWORD domain circular
+
+UBYTE pnoise(UWORD y,UWORD x)
+{
+    ULONG acc=0;
+    UWORD ymask=0x8000;
+    while(ymask)
+    {
+
+        ymask>>=1;
+    }
 }

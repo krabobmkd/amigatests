@@ -48,8 +48,8 @@ endif()
 
 add_executable(gelstest
 	gelstest.c
-	datatypebm.c
-	datatypebm.h
+	datatypebm8b.c
+	datatypebm8b.h
 	animtools.c
 	animtools.h
 	animtools_proto.h )

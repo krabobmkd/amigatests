@@ -10,9 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "datatypebm.h"
+#include "datatypebm8b.h"
 int LoadDataTypeToBm8b(const char *pFileName,
-                         DtBm *DtBm,PLANEPTR *maskPlane,struct Screen *pDestScreen)
+                         DtBm *DtBm,PLANEPTR *pmaskPlane,UBYTE **pPalette,struct Screen *pDestScreen)
 {
     UBYTE                   *chunk;
     int                 chunksize,nbc;
@@ -21,16 +21,28 @@ int LoadDataTypeToBm8b(const char *pFileName,
     struct BitMapHeader     *bmhd=NULL;
     struct ColorRegister    *coloreg=NULL;
 
-    DtBm->obj =   NewDTObject( pFileName,
-                        DTA_SourceType,         DTST_FILE,
-                        DTA_GroupID,            GID_PICTURE,
-                        OBP_Precision,          PRECISION_IMAGE,
-                        PDTA_FreeSourceBitMap,  TRUE,
-                        PDTA_Screen,            pDestScreen,
-                        PDTA_Remap,             TRUE,
-                       0
-                 );
-
+    if(pDestScreen)
+    {   // remap to screen
+        DtBm->obj =   NewDTObject( pFileName,
+                    DTA_SourceType,         DTST_FILE,
+                    DTA_GroupID,            GID_PICTURE,
+                    OBP_Precision,          PRECISION_IMAGE,
+                    PDTA_FreeSourceBitMap,  TRUE,
+                    PDTA_Screen,            pDestScreen,
+                    PDTA_Remap,             TRUE,
+                   0
+             );
+    } else
+    {
+        DtBm->obj =   NewDTObject( pFileName,
+                    DTA_SourceType,         DTST_FILE,
+                    DTA_GroupID,            GID_PICTURE,
+                    OBP_Precision,          PRECISION_IMAGE,
+                   PDTA_FreeSourceBitMap,  TRUE,
+                    PDTA_Remap,             TRUE,
+                   0
+             );
+    }
 
   printf("NewDTObject:%lx\n",(int)DtBm->obj);
 
@@ -42,11 +54,14 @@ int LoadDataTypeToBm8b(const char *pFileName,
     DtBm->obj = NULL;
         return(2); }
 
-    printf("bmh_Width:%d bmh_Width:%d d:%d\n",
+    DtBm->width = (WORD)bmhd->bmh_Width;
+    DtBm->height = (WORD)bmhd->bmh_Height;
+    DtBm->nbColors = 1<<bmhd->bmh_Depth;
+    printf("bmh_Width:%d bmh_Height:%d d:%d\n",
 (int)bmhd->bmh_Width,(int)bmhd->bmh_Height, (int)bmhd->bmh_Depth
     );
 
-    printf("bmh_Masking:%08x ",(int) bmhd->bmh_Masking);
+    printf("bmh_Masking:%08x \n",(int) bmhd->bmh_Masking);
 
     DoDTMethod( DtBm->obj,0,0, DTM_PROCLAYOUT, NULL,1, 0 );
 
@@ -57,22 +72,21 @@ int LoadDataTypeToBm8b(const char *pFileName,
 #define	mskLasso		3
 #define	mskHasAlpha		4
 */
-//    if(pmaskplane)
-//    {
-//        *pmaskplane = NULL; // default.
-//         /* NULL or mask plane for use with BltMaskBitMapRastPort() (PLANEPTR) */
-//        GetAttr(    PDTA_MaskPlane,obj,(ULONG *) &pmaskplane );
-//        printf("PDTA_MaskPlane:%08x ",(int) *pmaskplane);
-//    }
+    if(pmaskPlane)
+    {
+        *pmaskPlane = NULL; // default.
+         /* NULL or mask plane for use with BltMaskBitMapRastPort() (PLANEPTR) */
+        GetAttr(    PDTA_MaskPlane,DtBm->obj,(ULONG *) pmaskPlane );
+        printf("PDTA_MaskPlane:%08x\n",(int) *pmaskPlane);
+    }
+    if(pPalette)
+    {
+        GetAttr(    PDTA_ColorRegisters,DtBm->obj,(ULONG *) pPalette );
+    }
 
 
 //    if( bmhd->bmh_Depth >8 ) { DisposeDTObject( obj );    return(3); }
     GetAttr(   PDTA_DestBitMap,  DtBm->obj,    (ULONG *) &DtBm->bm );
-
-    if(maskPlane)
-    {
-        GetAttr(   PDTA_DestBitMap,  DtBm->obj, (ULONG *) maskPlane );
-    }
 
 //    if (bm == NULL) {   GetAttr(   PDTA_BitMap,   obj,    (ULONG *) &bm ); }
     if (DtBm->bm == NULL) { DisposeDTObject( DtBm->obj ); DtBm->obj = NULL;  return(4);   }
