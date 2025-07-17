@@ -8,7 +8,7 @@ set(CMAKE_C_STANDARD 11)
 project(RtgDualpf LANGUAGES C CXX VERSION 1.0)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # we need some p96 sdk includes.
-set(COMMONLIBS "../../../amigacommonlibs")
+set(COMMONLIBS "../../amigacommonlibs")
 
 add_executable(testrtgdpf 
 		testrtgdpf.c 

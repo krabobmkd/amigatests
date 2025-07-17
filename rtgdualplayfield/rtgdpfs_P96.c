@@ -8,8 +8,8 @@
 struct rtg_dpf_screen_p96 {
 
     struct rtg_dpf_screen _super;
-
     struct Window *_win_backdrop;
+    ULONG _modeid;
 
     // as allocated and freed
     struct BitMap *_main_bm;
@@ -35,7 +35,7 @@ static void p96_close(struct rtg_dpf_screen_p96 *pthis)
 }
 
 
-void p96_setPalette(struct rtg_dpf_screen_ocs* pthis,const UBYTE *ppalette, int nbcolors, int iPlayfield)
+void p96_setPalette(struct rtg_dpf_screen_p96* pthis,const UBYTE *ppalette, int nbcolors, int iPlayfield)
 {
     struct Screen *pscreen = NULL;
     if(!pthis || pthis->_super._screen==NULL) return;
@@ -53,7 +53,7 @@ void p96_setPalette(struct rtg_dpf_screen_ocs* pthis,const UBYTE *ppalette, int 
 }
 
 
-static void p96_setscroll(struct rtg_dpf_screen_ocs* pthis, WORD scrollx1, WORD scrolly1, WORD scrollx2, WORD scrolly2)
+static void p96_setscroll(struct rtg_dpf_screen_p96* pthis, WORD scrollx1, WORD scrolly1, WORD scrollx2, WORD scrolly2)
 {
     struct Screen *pscreen = NULL;
     if(!pthis || pthis->_super._screen==NULL) return;

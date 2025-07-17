@@ -47,7 +47,9 @@ int main(int argc, char** argv)
     // set palette
     if(somePalette)
     {
-        DualScreen->setPalette(DualScreen,somePalette,someBitmap.nbColors,0);
+        someBitmap.nbColors = 8;
+        DualScreen->setPalette(DualScreen,somePalette,someBitmap.nbColors,0); // pf1
+        DualScreen->setPalette(DualScreen,somePalette,someBitmap.nbColors,1); // pf2
     }
 
     //copy bm

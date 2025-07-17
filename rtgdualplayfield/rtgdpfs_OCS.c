@@ -7,8 +7,11 @@
 //#include <proto/alib.h>
 #include <intuition/screens.h>
 #include <graphics/displayinfo.h>
+#include <graphics/modeid.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+
 
 struct rtg_dpf_screen_ocs {
 
@@ -21,15 +24,40 @@ struct rtg_dpf_screen_ocs {
 
     struct ExtraRastPortAndBm _pf2rp;
     struct RasInfo *_rasinfo2;
+    // tricky private things
+    ULONG _initialDepth;
+    ULONG _fp2_paletteShift;
+    ULONG _maxNbColsPerDpf;
 };
 
 static void ocs_close(struct rtg_dpf_screen_ocs *pthis)
 {
     if(!pthis) return;
-    CloseExtraRastPortAndBm(&pthis->_pf2rp);
 
     if(pthis->_win_backdrop) CloseWindow(pthis->_win_backdrop);
-    if(pthis->_super._screen)   CloseScreen(pthis->_super._screen);
+
+    if(pthis->_super._screen)
+    {
+        // uninstall pf2 - undocumented by example, but looks more clean like that ?
+        {
+            ScreenToBack(pthis->_super._screen); // less glitches
+            Forbid();
+                /* Install rinfo for viewport's second playfield */
+                pthis->_super._screen->ViewPort.RasInfo->Next = NULL;
+                pthis->_super._screen->ViewPort.Modes &= ~DUALPF;
+
+                pthis->_super._screen->RastPort.BitMap->Depth = pthis->_initialDepth; // pfioooooou
+                pthis->_super._screen->BitMap.Depth = pthis->_initialDepth;
+
+            Permit();
+            /* Put viewport change into effect */
+            MakeScreen(pthis->_super._screen);
+            RethinkDisplay();
+        }
+
+        CloseScreen(pthis->_super._screen);
+    }
+    CloseExtraRastPortAndBm(&pthis->_pf2rp);
 
     if(pthis->_rasinfo2) FreeVec(pthis->_rasinfo2);
     FreeVec(pthis);
@@ -41,14 +69,28 @@ void ocs_setPalette(struct rtg_dpf_screen_ocs* pthis,const UBYTE *ppalette, int 
     if(!pthis || pthis->_super._screen==NULL) return;
     pscreen = pthis->_super._screen;
 
+    if(nbcolors>pthis->_maxNbColsPerDpf) nbcolors=pthis->_maxNbColsPerDpf; // max supported for a playfield.
+
+ //   int ishiftpal = (iPlayfield)?pthis->_fp2_paletteShift:0;
+
+
+    int nbc = (int)pscreen->ViewPort.ColorMap->Count;
+
+    int ipalshift = (iPlayfield)?pthis->_fp2_paletteShift:0;
+    printf("nbcolors:%d ipalshift:%d nbctoset:%d\n",nbc,ipalshift,nbcolors);
     for(int i=0;i<nbcolors ; i++)
     {
          ULONG r = ((ULONG)*ppalette++)<<24;
           ULONG g = ((ULONG)*ppalette++)<<24;
          ULONG b = ((ULONG)*ppalette++)<<24;
-
-        SetRGB32( &(pscreen->ViewPort),i,  r,  g,  b );
+        if((i+ipalshift)<nbc) // or crash
+        {
+            SetRGB32( &(pscreen->ViewPort),i+ipalshift,  r,  g,  b );
+        }
     }
+
+
+
 
 }
 
@@ -145,9 +187,27 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
 
     // - - - - -
     // 1.3: test 16b/24b depth then if fail 8b,5b,4b , for native modes AGA/OCS.
+    int isAGA= 1;
+    int initialDepth;
+    int appliedDepth;
+    if(isAGA)
+    {
+        initialDepth = 4;
+        appliedDepth = 4;
+        pthis->_fp2_paletteShift = 8;
+        pthis->_maxNbColsPerDpf = 16;
+    } else
+    {
+        //OCS/ECS
+        initialDepth = 3;
+        appliedDepth = 3;
+        pthis->_fp2_paletteShift = 8;
+        pthis->_maxNbColsPerDpf = 8;
+    }
+    pthis->_initialDepth = initialDepth; // used for closing.
 
     pthis->_modeid = BestModeID(
-            BIDTAG_Depth,3,
+            BIDTAG_Depth,appliedDepth,
             BIDTAG_DIPFMustHave, DIPF_IS_DUALPF , // DIPF_IS_PF2PRI
             BIDTAG_NominalWidth,320,
             BIDTAG_NominalHeight,200,
@@ -178,28 +238,36 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
    }
     printf("nominal %d %d\n",pthis->_width,pthis->_height);
 
-	struct ColorSpec colspec[8]={ // let's do it amiga default like
-                0,  0,0,0, //black
-                1,  8,8,8,  // grey
-                2,  15,15,15,
-                3,  1,8,15, // blue 1
-                4,  0,1,8, // blue 2
-                5,  8,0,4,
-                6,  8,6,4,
-                // end
-                -1,0,0,0};
+//	struct ColorSpec colspec[8]={ // let's do it amiga default like
+//                0,  0,0,0, //black
+//                1,  8,8,8,  // grey
+//                // end
+//                -1,0,0,0};
+
+
+    // on OCS/ECS,
+    // dual playfield is always lowres , 8color + 8color,
+    // and those colors are always [0,7] [16,23] in a 32c palette. (mouse can be [24,31])
+
+    // on AGA,
+    // dual playfield is always lowres , 16color + 16color,
+    // at hardware level it can use any of the first 16c of the 8 "32c slots".
+    // to force intuition to manage the full 256c we ask 256 colors intially.
+
+    // on P96, dualpf is tricked basically we trick a 256c planar to chunly mode. -> other code.
+
 
     pthis->_super._screen = OpenScreenTags( NULL,
 			SA_DisplayID,pthis->_modeid,
                         SA_Title, (ULONG)"DualPF", // used as ID by promotion tools and else ?
                         SA_Width, pf1width,
                         SA_Height,pf1height,
-                        SA_Depth,4,
-//                        SA_Behind,TRUE,    /* Open behind */
+                        SA_Depth,initialDepth, // big fake of asking for 256 colors instead of 8/16
+                        SA_Behind,TRUE,    /* Open behind, less glitch at init */
 //                        SA_Quiet,TRUE,     /* quiet */
 //			SA_Type,CUSTOMSCREEN,
 //			SA_Interleaved,FALSE, // test, may make C2P faster
-			SA_Colors,(ULONG)&colspec[0],
+//			SA_Colors,(ULONG)&colspec[0],
                         0 );
 
 	if( pthis->_super._screen == NULL )
@@ -213,7 +281,7 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
 
 //if ( rinfo2 != NULL )
 	// alloc pf2 bitmap, use gfx drawable rastport since we're at it:
-	if(OpenExtraRastPortAndBm(&pthis->_pf2rp,pf2width,pf2height,4,
+	if(OpenExtraRastPortAndBm(&pthis->_pf2rp,pf2width,pf2height,appliedDepth,
             pthis->_super._screen->RastPort.BitMap
             )==0)
 	{
@@ -227,11 +295,35 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
         ocs_close(pthis);
         return NULL;
 	}
+/* from docs:
+    The DUALPF and PFBA modes are related.  DUALPF tells the system to treat
+    the raster specified by this ViewPort as the first of two independent and
+    separately controllable playfields. It also modifies the manner in which
+    the pixel colors are selected for this raster (see the above table).
+
+	   Depth       Color	   Depth       Color
+       (PF-1)    Registers     (PF-2)    Registers
+       ------    ---------     ------    ---------
+         1          0,1          1          8,9
+         2          0-3          1          8,9
+         2          0-3          2          8-11
+         3          0-7          2          8-11
+         3          0-7          3          8-15
+
+When PFBA is specified, it indicates that the second playfield has video
+priority over the first one.  Playfield relative priorities can be
+controlled when the playfield is split into two overlapping regions.
+Single-playfield and dual-playfield modes are discussed below in
+"Advanced Topics."
+*/
+
 	pthis->_rasinfo2->BitMap = pthis->_pf2rp._bm;
         printf("install\n");
 	// install pf2
     {
         Forbid();
+            pthis->_super._screen->RastPort.BitMap->Depth = appliedDepth; // pfioooooou
+            pthis->_super._screen->BitMap.Depth = appliedDepth;
 
             /* Install rinfo for viewport's second playfield */
             pthis->_super._screen->ViewPort.RasInfo->Next = pthis->_rasinfo2;
@@ -242,6 +334,9 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
         /* Put viewport change into effect */
         MakeScreen(pthis->_super._screen);
         RethinkDisplay();
+
+        // then only open to front, less glitch
+        ScreenToFront(pthis->_super._screen);
     }
         printf("install ok\n");
 	// --------- open intuition fullscreen window for this screen:
@@ -270,7 +365,7 @@ struct rtg_dpf_screen* Create_dualplayfield_screen_OCS(int pf1width,int pf1heigh
 
     pthis->_super._userPort = pthis->_win_backdrop->UserPort;
     pthis->_super._pf1rp = &(pthis->_super._screen->RastPort);
-    pthis->_super._pf2rp = pthis->_pf2rp._rp;
+    pthis->_super._pf2rp = pthis->_pf2rp._erp._rp;
 
     printf("pthis->_super._pf1rp->BitMap.Depth: %d\n",(int) pthis->_super._pf1rp->BitMap->Depth);
     printf("pthis->_super._pf2rp->BitMap.Depth: %d\n",(int) pthis->_super._pf2rp->BitMap->Depth);
