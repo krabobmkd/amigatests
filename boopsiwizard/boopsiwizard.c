@@ -267,7 +267,7 @@ int main(int argc, char **argv)
     if(!initAppModel())  cleanexit("Can't create app");
 
 
-    // = = = = = now that needed classes arte loaded
+    // = = = = = now that needed classes are loaded
     // = = = = = creates the instances...
 
     app->lockedscreen = LockPubScreen(NULL);
