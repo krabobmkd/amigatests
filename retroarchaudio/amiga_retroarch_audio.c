@@ -21,23 +21,26 @@
 //#include <stdlib.h>
 //#include <string.h>
 
-//// private, describe a sound buffer to write
-//// used by the mixer between caller and AHI.
-//struct sSoundToWrite
-//{	// write: stereo Writing on leftright buffer (signed short*2)table:
-//	WORD 	    *m_pBuffer;
-//	WORD 	    *m_pPrevBuffer; // previous buffer, for tricks.
-//	// write: AHI Volume multiplier. should be 0x00010000; or do not touch.
-//	//ULONG 	    m_Volume;
-//	// read: the amount of data to write in pBuffer. *2 for stereo.
-//	ULONG m_nbSampleToFill;
-//	// read: play frequency (22050,44100,...) should be the one given with AHIS_Init()
-//	ULONG	m_PlayFrequency;
-//	ULONG         m_stereo;
-//	// Total Amount of sample played from the begining.
-//	// seconds should be found with:  m_TotalSampleDone/m_PlayFrequency.
-//	//unsigned long long	m_TotalSampleDone;
-//};
+//  globals
+struct Library *AHIBase=NULL;
+
+// private, describe a sound buffer to write
+// used by the mixer between caller and AHI.
+struct sSoundToWrite
+{	// write: stereo Writing on leftright buffer (signed short*2)table:
+	WORD 	    *m_pBuffer;
+	WORD 	    *m_pPrevBuffer; // previous buffer, for tricks.
+	// write: AHI Volume multiplier. should be 0x00010000; or do not touch.
+	//ULONG 	    m_Volume;
+	// read: the amount of data to write in pBuffer. *2 for stereo.
+	ULONG m_nbSampleToFill;
+	// read: play frequency (22050,44100,...) should be the one given with AHIS_Init()
+	ULONG	m_PlayFrequency;
+	ULONG         m_stereo;
+	// Total Amount of sample played from the begining.
+	// seconds should be found with:  m_TotalSampleDone/m_PlayFrequency.
+	//unsigned long long	m_TotalSampleDone;
+};
 
 
 //// return how much done.
@@ -45,16 +48,16 @@
 
 
 
-//typedef enum {
-//	eAHIS_ok=0,
-//	eAHIS_NotInited, // on purpose.
-//	eAHIS_Init, // special private value
-//	eAHIS_DeviceError,
-//	eAHIS_NotEnoughMemory,
-//	eAHIS_ThreadError,
-//    eAHIS_StreamEnd,
-//	eAHIS_NumberOfError // used to extend the error list by other libs.
-//} eAHIError;
+typedef enum {
+	eAHIS_ok=0,
+	eAHIS_NotInited, // on purpose.
+	eAHIS_Init, // special private value
+	eAHIS_DeviceError,
+	eAHIS_NotEnoughMemory,
+	eAHIS_ThreadError,
+   eAHIS_StreamEnd,
+	eAHIS_NumberOfError // used to extend the error list by other libs.
+} eAHIError;
 
 
 
@@ -322,15 +325,18 @@ struct amiga_audio_internal
 {
     struct Process *m_hMainProcess;
     struct Process *m_hThread;
+    // - - - - - messages
     // main to thread:
     char m_useAHI;
-    char m_play; // 1=play, 0 stop
+    char m_askedtoplay; // 1=play, 0 stop
     char m_askThreadEnd;
     // thread to main:
     char m_isplaying;
+    // - - - - - audio options
     // main to thread
-    ULONG m_freq;
-
+    ULONG m_freq; // in hz, likely 22050...
+    ULONG m_sampleUpdateLength; // computed from freq, then rounded.
+    ULONG m_stereo;
     // - - - - AHI
 	struct MsgPort 	*m_AHImp;
 	struct AHIRequest  *m_AHIio;
@@ -340,15 +346,10 @@ struct amiga_audio_internal
     // - - - - Paula
 
     // - - - - buffers
+    // buffers of audio thread, passed to hardware or AHI
+    // is SHORT* or BYTE *
+	SHORT *m_pSBuffAlloc,*m_pSBuff1, *m_pSBuff2;
 
-//    ULONG m_AskThreadDeath;
-
-//	// sample per seconds while playing:
-//	ULONG 			m_freq;
-
-//    struct sAHISoundServer *_pThread;
-//    struct Library *AHIBase;
-//    int m_ahi_error;
 };
 
 // this struct may be actually copy-passed to thread.
@@ -358,9 +359,11 @@ struct threadParamMsg
     struct amiga_audio_internal *p;
 };
 
-static void AudioThread_AHI_Close(truct amiga_audio_internal *p);
-static void AudioThread_AHI_Init(truct amiga_audio_internal *p)
+static void AudioThread_AHI_Close(struct amiga_audio_internal *p);
+static void AudioThread_AHI_Init(struct amiga_audio_internal *p)
 {
+    if(p->m_isplaying) return;
+    p->m_isplaying = 0;
     BYTE deviceResult;
     p->m_AHImp = CreatePort(NULL,0);
     p->m_AHIio = (struct AHIRequest*)CreateExtIO(p->m_AHImp ,sizeof(struct AHIRequest));
@@ -371,63 +374,178 @@ static void AudioThread_AHI_Init(truct amiga_audio_internal *p)
             OpenDevice(AHINAME,AHI_DEFAULT_UNIT, (struct IORequest *)(p->m_AHIio), 0);
     }
     if (deviceResult) {
-        p->m_Error = eAHIS_DeviceError;
+        p->m_ahi_error = eAHIS_DeviceError;
         AudioThread_AHI_Close(p);
-        return 1;
+        return;
     }
 
     AHIBase = (struct Library *) p->m_AHIio->ahir_Std.io_Device;
     p->m_AHIio2 = (struct AHIRequest *)CreateExtIO(p->m_AHImp ,sizeof(struct AHIRequest));
 
     if(!p->m_AHIio2) {
-        p->m_Error = eAHIS_DeviceError;
+        p->m_ahi_error = eAHIS_DeviceError;
         AudioThread_AHI_Close(p);
-        return 1;
+        return;
     }
     //CopyMem(p->m_AHIio, p->m_AHIio2, sizeof(struct AHIRequest));
     memcpy(p->m_AHIio2,p->m_AHIio,sizeof(struct AHIRequest));
 
-    ULONG streamBytes = p->m_nextSamples<<1; // *sizeof(SHORT);
-    if(p->m_stereo) streamBytes<<=1;
+    ULONG streamBytes = p->m_sampleUpdateLength *sizeof(SHORT);
 
-    // then again <<1 * 2 for double buffer
-    p->m_pSBuffAlloc = (SHORT*) AllocVec(streamBytes<<1, MEMF_PUBLIC|MEMF_CLEAR);
+    if(p->m_stereo) streamBytes*=2;
+
+    // then again  * 2 for double buffer
+    p->m_pSBuffAlloc = (SHORT*) AllocVec(streamBytes*2, MEMF_PUBLIC|MEMF_CLEAR);
     if (!p->m_pSBuffAlloc) {
-        p->m_Error = eAHIS_NotEnoughMemory;
+        p->m_ahi_error = eAHIS_NotEnoughMemory;
         AudioThread_AHI_Close(p);
-        return 1;
+        return;
     }
 
     p->m_pSBuff1 = p->m_pSBuffAlloc;
     p->m_pSBuff2 = p->m_pSBuffAlloc + (streamBytes>>1);
 
-    p->m_Error = eAHIS_ok;
-    return 0;
-
+    p->m_ahi_error = eAHIS_ok;
+    p->m_isplaying = 1;
+    return;
 }
-static void AudioThread_AHI_Loop(truct amiga_audio_internal *p)
+static void AudioThread_AHI_Loop(struct amiga_audio_internal *p)
 {
+    if(!p->m_isplaying) return;
+
+    ULONG streamBytes = p->m_sampleUpdateLength<<1; // *sizeof(SHORT);
+    if(p->m_stereo) streamBytes<<=1;
+
+	{ // paragraph for thread loop & data
+        // prepare struct which is passed to write func:
+        struct sSoundToWrite soundToWrite;
+        soundToWrite.m_nbSampleToFill = p->m_sampleUpdateLength; // always
+        soundToWrite.m_PlayFrequency = p->m_freq; // always
+        soundToWrite.m_stereo =  p->m_stereo;
+
+        // loop still something ask to stop.
+        p->m_join = NULL; // retain the last one to tell next request we continue this one.
+        ULONG iloop=0;
+        while(p->m_askedtoplay)
+        {
+            ULONG numSampleWritten;
+            SHORT *p1 = p->m_pSBuff1;
+            soundToWrite.m_pBuffer = p1;
+            soundToWrite.m_pPrevBuffer = p->m_pSBuff2; // for tricks.
+
+            // write the signal:
+            if(iloop<2)
+            { // would clean the buffers at start. no data ready anyway.
+               numSampleWritten = soundToWrite.m_nbSampleToFill;
+               memset(p1,0,streamBytes);
+               iloop++;
+            } else
+            {
+             numSampleWritten = soundToWrite.m_nbSampleToFill;
+                // numSampleWritten = soundMixOnThread( &soundToWrite );
+            }
+
+            {
+                struct AHIRequest  *AHIio = p->m_AHIio;
+                AHIio->ahir_Std.io_Message.mn_Node.ln_Pri = 10; //64 //127?
+                AHIio->ahir_Std.io_Command = CMD_WRITE;
+                AHIio->ahir_Std.io_Data = p->m_pSBuff1;
+                AHIio->ahir_Std.io_Offset = 0;
+                AHIio->ahir_Version = 4;
+                AHIio->ahir_Frequency = p->m_freq;
+                if(p->m_stereo)
+                {
+                   AHIio->ahir_Type = AHIST_S16S;
+                   AHIio->ahir_Std.io_Length = numSampleWritten<<2;
+                } else
+                {   // mono
+                   AHIio->ahir_Type = AHIST_M16S;
+                   AHIio->ahir_Std.io_Length = numSampleWritten<<1;
+                }
+                //Workout mode to set
+                AHIio->ahir_Volume = 0x010000; // max volume
+                AHIio->ahir_Position = 0x8000; // stereo position to the middle, means 0.5.
+                AHIio->ahir_Link = p->m_join;
+
+                SendIO((struct IORequest *)AHIio);
+
+                if (p->m_join) {
+                    // this is where the process is waiting when playing.
+                    // it's waiting to join the next buffer.
+                    // it must always happens at the right moment.
+                    // and that's why there is a thread.
+                    WaitIO((struct IORequest *)(p->m_join));
+                    }
+
+                p->m_join = AHIio;
+
+                // switch double buffer:
+                p->m_AHIio = p->m_AHIio2;
+                p->m_AHIio2 = AHIio;
+
+                p->m_pSBuff1 = p->m_pSBuff2;
+                p->m_pSBuff2 = p1;
+
+            } // end of io paragraph
+        } // end of life loop
+    } // def apragraph
 
 }
-static void AudioThread_AHI_Close(truct amiga_audio_internal *p)
+static void AudioThread_AHI_Close(struct amiga_audio_internal *p)
 {
+    p->m_isplaying = 0;
+//    //printf("AudioThread_AHI_Close\n");
+
+   	// close ahi
+	if(p->m_join) {
+
+       if (!CheckIO((struct IORequest *)(p->m_join))) {
+              AbortIO((struct IORequest *)(p->m_join));
+          }
+		WaitIO((struct IORequest *)(p->m_join));
+	}
+   //printf("AudioThread_AHI_Close 2\n");
+	if(p->m_AHIio){
+		CloseDevice((struct IORequest *)(p->m_AHIio));
+		DeleteExtIO((struct IORequest *)(p->m_AHIio));
+       p->m_AHIio= NULL;
+		}
+   //printf("AudioThread_AHI_Close 3\n");
+	if(p->m_AHIio2){
+       DeleteExtIO((struct IORequest *)(p->m_AHIio2));
+		p->m_AHIio2= NULL;
+		}
+	if(p->m_AHImp){
+       DeletePort(p->m_AHImp);
+		p->m_AHImp= NULL;
+		}
+   //printf("AudioThread_AHI_Close 4\n");
+   // then close buffers
+	if(p->m_pSBuffAlloc){ FreeVec(p->m_pSBuffAlloc); p->m_pSBuffAlloc=NULL; }
 
 }
-static void AudioThread_Paula_Init(truct amiga_audio_internal *p)
+static void AudioThread_Paula_Init(struct amiga_audio_internal *p)
+{
+    //TODO
+    return;
+}
+static void AudioThread_Paula_Loop(struct amiga_audio_internal *p)
 {
     //TODO
 
 }
-static void AudioThread_Paula_Loop(truct amiga_audio_internal *p)
+static void AudioThread_Paula_Close(struct amiga_audio_internal *p)
 {
     //TODO
 
 }
-static void AudioThread_Paula_Close(truct amiga_audio_internal *p)
-{
-    //TODO
 
-}
+struct AudioDriver{
+    void (*init)(struct amiga_audio_internal *p);
+    void (*loop)(struct amiga_audio_internal *p);
+    void (*close)(struct amiga_audio_internal *p);
+};
+
 static void AudioThread(void)
 {
     struct amiga_audio_internal *p;
@@ -436,33 +554,52 @@ static void AudioThread(void)
 
 	WaitPort(&pThread->pr_MsgPort);
 	msg = (struct threadParamMsg *) GetMsg(&pThread->pr_MsgPort);
-    p = msg.p;
+    p = msg->p;
     ReplyMsg((APTR) msg);
 
-    while(1)
+ printf("Hello, it's audio thread %d samplepartlength:%d\n",p->m_freq,p->m_sampleUpdateLength);
+
+    struct AudioDriver ad;
+    if(p->m_useAHI) {
+        ad.init = &AudioThread_AHI_Init;
+        ad.loop = &AudioThread_AHI_Loop;
+        ad.close = &AudioThread_AHI_Close;
+    } else {
+        ad.init = &AudioThread_Paula_Init;
+        ad.loop = &AudioThread_Paula_Loop;
+        ad.close = &AudioThread_Paula_Close;
+    }
+
+    while(1) // do a loop for each start/stop.
     {
         // receiving message just means state of m_play or m_askThreadEnd changed.
         // else thread takes 0 cpu.
         WaitPort(&pThread->pr_MsgPort);
         msg = (struct threadParamMsg *) GetMsg(&pThread->pr_MsgPort);
-        char threadend = p->m_askThreadEnd;
-        if(threadend)
+        if(p->m_askThreadEnd)
         {
             ReplyMsg((APTR) msg); // asap
             return;
         }
 
-        if(p->m_play)
+        if(!p->m_askedtoplay)
         {
-            // reply msg only after init result !
-            if(p->m_useAHI) AudioThread_AHI_Init(p);
-            else AudioThread_Paula_Init(p);
-
             ReplyMsg((APTR) msg);
-
-            if(p->m_useAHI) AudioThread_AHI_LoopAndClose(p);
-            else AudioThread_Paula_LoopAndClose(p);
+            continue; // stop state return to wait.
         }
+        // we're here if we were asked to play.
+        // reply msg only after init result,
+
+        ad.init(p);
+ printf("After init p->m_isplaying:%d\n",p->m_isplaying);
+
+        ReplyMsg((APTR) msg);
+        if(p->m_isplaying)
+        {
+            ad.loop(p);
+            ad.close(p);
+        }
+
     }
 
 }
@@ -485,8 +622,15 @@ void *amiga_audio_init(const char *device,
     if(rate>22050) rate=22050;
     p->m_freq = rate;
     if(new_rate) *new_rate = rate;
+    p->m_stereo = 1;
 
+    // sound thread will work at 30Hz:
+    const int ifps =60; // on MAME it varies: 50,56,59,60
+    p->m_sampleUpdateLength = ((p->m_freq*2/ifps)+3)& 0xfffffffc;
+    // AHI crash if too short it seems (do not go lower than 11khz)
+    if(p->m_sampleUpdateLength<256) p->m_sampleUpdateLength=256;
 
+ printf("create process\n");
     // - - - - - create thread the os3 way and pass params - - - - - -
 	{
 		struct TagItem threadTags[] = { NP_Entry,(ULONG) &AudioThread,
@@ -503,7 +647,9 @@ void *amiga_audio_init(const char *device,
         return NULL;
 	}
 	{
-    	threadParamMsg tpm;
+    	struct threadParamMsg tpm;
+
+ printf("send init params\n");
 
         tpm.msg.mn_ReplyPort = CreateMsgPort();
         tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
@@ -514,15 +660,8 @@ void *amiga_audio_init(const char *device,
 		(void) GetMsg(tpm.msg.mn_ReplyPort);
 
 		DeleteMsgPort(tpm.msg.mn_ReplyPort);
-
+ printf("after send init params\n");
     }
-
-
- //   return  amiga_audio_init_ahi(device,rate,latency,block_frames,new_rate);
-
-
-//    struct amiga_audio_internal *p = AllocVec(sizeof(sAHISoundServer),MEMF_CLEAR);
-
 
     return (void *)p;
 }
@@ -534,7 +673,7 @@ size_t amiga_audio_write(void *data, const void *s, size_t len)
 
 }
 // Stops replay
-int amiga_audio_stop(void *data)
+bool amiga_audio_stop(void *data)
 {
     struct amiga_audio_internal *p = (struct amiga_audio_internal *)data;
     if(!p) return 0;
@@ -542,12 +681,12 @@ int amiga_audio_stop(void *data)
     if(!p->m_isplaying) return 0;
 
     {
-    	threadParamMsg tpm;
+    	struct threadParamMsg tpm;
 
         tpm.msg.mn_ReplyPort = CreateMsgPort();
         tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
         tpm.p = p;
-        p->m_play = 0;
+        p->m_askedtoplay = 0; // when this is set, play loop will quit in 2 frames max.
         PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
         WaitPort(tpm.msg.mn_ReplyPort);
 		(void) GetMsg(tpm.msg.mn_ReplyPort);
@@ -555,24 +694,23 @@ int amiga_audio_stop(void *data)
 		DeleteMsgPort(tpm.msg.mn_ReplyPort);
     }
 
-    return 0;// (int)p->m_isplaying;
+    return 0;
 
-    //return 0;
 }
 
 // starts replay
-int amiga_audio_start(void *data, bool is_shutdown)
+bool amiga_audio_start(void *data, bool is_shutdown)
 {
     struct amiga_audio_internal *p = (struct amiga_audio_internal *)data;
     if(!p) return 0;
 
     {
-    	threadParamMsg tpm;
+    	struct threadParamMsg tpm;
 
         tpm.msg.mn_ReplyPort = CreateMsgPort();
         tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
         tpm.p = p;
-        p->m_play = 1;
+        p->m_askedtoplay = 1;
         PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
         WaitPort(tpm.msg.mn_ReplyPort);
 		(void) GetMsg(tpm.msg.mn_ReplyPort);
@@ -581,117 +719,6 @@ int amiga_audio_start(void *data, bool is_shutdown)
     }
 
     return (int)p->m_isplaying;
-//// printf("osd_start_audio_stream\n");
-//    if(_pThread) osd_stop_audio_stream();
-
-//    if(!Machine) return 0; // driver and machine are already inited during this call
-
-//    MameConfig::Audio &config = getMainConfig().audio();
-//    if(config._mode != MameConfig::AudioMode::AHI)
-//    {
-//        m_ahi_error = eAHIS_NotInited;
-//        return START_VALUE_FAIL;
-//    }
-//    amigamame_audio_forcemono = 0;
-//    if(config._forceMono)
-//    {
-//        amigamame_audio_forcemono = 1;
-//        stereo=0;
-//    }
-
-//    int freq =  config._freq; // Machine->sample_rate;
-//    int machinefreq = Machine->sample_rate;
-// // printf("config freq:%d machine freq:%d\n",freq,machinefreq);
-
-//    if(machinefreq<freq) freq =machinefreq;
-//    if(freq == 0)
-//    {
-//        m_ahi_error = eAHIS_NotInited;
-//        return START_VALUE_FAIL;
-//    }
-//    int ifps = (int) Machine->drv->frames_per_second;
-
-// // printf("osd_start_audio_stream ok to start thread\n");
-
-//   // let's update sound 30 times per sec when 60hz...
-//    /* beta 3 important note
-//      For Beta 1 and 2 we used to ask the double frame length
-//      which was wrong.
-//      Amiga AHI doesn't support very short sound streams,
-//        which happens with 11khz mono and 1sec/60 streams.
-//        So we have to ask for the double.
-//        But Mame wants to deliver sounds parts by video frame,
-//        and we have to actually ask the right number.
-//        Some PCM emulation will just consume their sample too fast.
-//        So now we let the emulation fills 8 round buffers at possibly 60Hz.
-//        and the AHI thread will consume 2 of them at 30Hz,
-//        so AHI still use longer frames.
-//    */
-//    // sound thread will work at 30Hz:
-//    ULONG updateLength = ((freq*2/ifps)+3)&0xfffffffc;
-//    // AHI crash if too short it seems
-//    if(updateLength<256) updateLength=256;
-
-//    mainprocess = (struct Process *)FindTask(NULL);
-
-//    _pThread = (sAHISoundServer *)AllocVec(sizeof(sAHISoundServer),
-//                              //OS4 MEMF_SHARED|MEMF_CLEAR
-//                              MEMF_PUBLIC|MEMF_CLEAR
-//                              );
-//    if(!_pThread)
-//    {
-//        m_ahi_error = eAHIS_DeviceError;
-//        return START_VALUE_FAIL;
-//    }
-
-//   // printf("freq:%d samplelength:%d\n",freq,updateLength);
-//	_pThread->m_Error = eAHIS_Init; // state in which the thread init the AHI device and requests.
-//    _pThread->m_freq = freq;
-//    _pThread->m_nextSamples = updateLength;
-//    _pThread->m_stereo = stereo;
-//// SetSignal(0L,SIGBREAKF_CTRL_C) & SIGBREAKF_CTRL_C
-//    ULONG oldsignals = SetSignal(0L, SIGF_SINGLE);
-//	{
-//		struct TagItem threadTags[] = { NP_Entry,(ULONG) &AHISStaticThread,
-//						//	NP_Child, TRUE, // os4 thread thing
-
-//                        NP_Priority,    60  , // int8; -128 .. 127 DO NOT HOG !!
-//                        NP_Name,(ULONG)"Audio",
-//                        NP_Output,(ULONG) mainprocess->pr_COS, // allow to print on same console !
-//                        NP_CloseOutput,FALSE,
-//                        NP_FreeSeglist, FALSE,
-//		 				TAG_DONE,0  };
-//        	_pThread->m_hThread = CreateNewProc( threadTags  );
-//	}
-//    if(_pThread->m_hThread == NULL )
-//    {
-//        SetSignal(oldsignals, oldsignals);
-//        //printf("createnewproc error\n");
-//        FreeVec(_pThread);
-//        _pThread = NULL;
-
-//        m_ahi_error = eAHIS_DeviceError;
-//        return START_VALUE_FAIL;
-//	}
-//// printf("wait for thread init oldsignals:%08x\n");
-//	// wait for thread to finish AHI init
-//    Wait(SIGF_SINGLE);
-//    SetSignal(oldsignals, oldsignals); // old signals back
-//// printf("after wait: err:%d\n",(int)_pThread->m_Error);
-//	if(_pThread->m_Error != eAHIS_ok )
-//	{
-//    	m_ahi_error = _pThread->m_Error;
-//		AHIS_Delete();
-//		return START_VALUE_FAIL;
-//	}
-//// printf("sound thread ok, samples:%d\n",_pThread->m_nextSamples);
-//    // must return samples to do next.
-
-//    // important ask emulation to generate half of what the 30Hz thread
-//    // consume:
-//    return _pThread->m_nextSamples >>1; // * (stereo+1);
-
-
 }
 
 void amiga_audio_free(void *data)
@@ -699,23 +726,22 @@ void amiga_audio_free(void *data)
     struct amiga_audio_internal *p = (struct amiga_audio_internal *)data;
     if(!p) return;
 
-    if(p->m_isplaying) amiga_audio_stop(data);
-    // wait end of thread
     {
-    	threadParamMsg tpm;
+    	struct threadParamMsg tpm;
 
         tpm.msg.mn_ReplyPort = CreateMsgPort();
         tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
         tpm.p = p;
-        p->m_play = 0;
+        p->m_askedtoplay = 0; // makes loop quit.
         p->m_askThreadEnd = 1;
         PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
-        WaitPort(tpm.msg.mn_ReplyPort);
+        WaitPort(tpm.msg.mn_ReplyPort); // wait end of thread Process in that case.
 		(void) GetMsg(tpm.msg.mn_ReplyPort);
 
 		DeleteMsgPort(tpm.msg.mn_ReplyPort);
     }
 
     FreeVec(p);
+ printf("final post delete, thread is dead, AHI is closed, memory is freed.\n");
 }
 

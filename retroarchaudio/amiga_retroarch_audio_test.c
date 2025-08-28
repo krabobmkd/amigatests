@@ -2,7 +2,7 @@
 
 #include <proto/exec.h>
 #include <proto/dos.h>
-#include <exec/interupt.h>
+#include <hardware/intbits.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -31,7 +31,7 @@ static void closemain()
     if(vblank_ok) {
      RemIntServer(INTB_VERTB, &VertBlank);
     }	
-	printf("stop audio api\n");	
+	printf("stop audio api and quit\n");
 	
 	if(RAAudio)
 	{		
@@ -59,7 +59,10 @@ int main(int argc, char **argv)
 	AddIntServer(INTB_VERTB, &VertBlank);
 	vblank_ok = TRUE;
 	
-	printf("enter loop\n");
+	printf("starts replay\n");
+	amiga_audio_start(RAAudio,FALSE);
+
+	printf("main process enter loop\n");
 	size_t subsamplelength = ((rate/50)+15) & (~15); // 16 align
 	unsigned isample=0;
     while(1) 
@@ -69,22 +72,23 @@ int main(int argc, char **argv)
 		if((signals & SIGBREAKF_CTRL_C)!=0) break;
 		
 		// write some 440Hz sinus as audio
-		WORD temp[subsample*2];
-		float freqdivider = 440.0f/(rate*M_PI);
-		for(unsigned i=0;i<(subsamplelength);i++)
-		{
-			WORD s = (WORD)(sinf(((float)(i+isample))*freqdivider)*32767.0f);	
-			temp[i*2] = s
-			temp[i*2+1] = s;
-		}
-		isample += subsamplelength;
+		// WORD temp[subsample*2];
+		// float freqdivider = 440.0f/(rate*M_PI);
+		// for(unsigned i=0;i<(subsamplelength);i++)
+		// {
+		// 	WORD s = (WORD)(sinf(((float)(i+isample))*freqdivider)*32767.0f);
+		// 	temp[i*2] = s
+		// 	temp[i*2+1] = s;
+		// }
+		// isample += subsamplelength;
 		
-		size_t done = amiga_audio_write(RAAudio, (const void *)&temp[0],subsamplelength); 
+		// size_t done = amiga_audio_write(RAAudio, (const void *)&temp[0],subsamplelength);
 		
 	}
+	printf("main process out of the loop, ask stop\n");
 	amiga_audio_stop(RAAudio); // Stops replay
 // is_shutdown
-	amiga_audio_start(RAAudio,TRUE); // starts replay	
+
 	
 	
 	// go to closemain() in all cases.
