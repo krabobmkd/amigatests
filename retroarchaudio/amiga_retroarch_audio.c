@@ -368,8 +368,8 @@ static void AudioThread_AHI_Loop(struct amiga_audio_internal *p)
                iloop++;
             } else
             {
-            // numSampleWritten = soundToWrite.m_nbSampleToFill;
-                numSampleWritten = soundMixOnThread16b( p,&soundToWrite );
+             numSampleWritten = soundToWrite.m_nbSampleToFill;
+            //    numSampleWritten = soundMixOnThread16b( p,&soundToWrite );
             }
 
             {
