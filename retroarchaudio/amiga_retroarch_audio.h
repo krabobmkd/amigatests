@@ -8,6 +8,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stddef.h>
 
+
 void *amiga_audio_init(const char *device,
 	unsigned rate, unsigned latency,
 	unsigned block_frames, unsigned *new_rate); // device and block_frames can be ignored, latency potentially too, new_rate should at the end contain the rate which was actually used, fixing things to 22050 also is fine

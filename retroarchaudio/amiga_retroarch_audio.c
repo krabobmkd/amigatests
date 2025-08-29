@@ -21,6 +21,15 @@
 //#include <stdlib.h>
 //#include <string.h>
 
+#define INPUTFORMAT_16B 1
+
+// MAME106 would have INT32 has internal format
+#ifdef INPUTFORMAT_16B
+typedef signed short ismpl_t;
+#else
+typedef signed int ismpl_t;
+#endif
+
 //  globals
 struct Library *AHIBase=NULL;
 
@@ -42,10 +51,17 @@ struct sSoundToWrite
 	//unsigned long long	m_TotalSampleDone;
 };
 
+// round buffer shared between threads.
+struct SampleFrame
+{
+    ismpl_t *_mix; // left/rightb interlaced if stereo.
+    // mix thread set read state, main caller process set write state.
+    ULONG _read; // amount of sample currently read in the frame.
+    ULONG _written;  // amount of sample currently written in the frame.
+    USHORT _readlock;
+    USHORT _writelock;
 
-//// return how much done.
-//ULONG soundMixOnThread( struct sSoundToWrite *pSoundToWrite);
-
+};
 
 
 typedef enum {
@@ -62,7 +78,7 @@ typedef enum {
 
 
 
-// - - - - - - retroarch api
+#define nbSampleFrame 8
 
 // https://sintonen.fi/src/ipc/ipctest.c
 
@@ -70,8 +86,10 @@ typedef enum {
 // also shared between process, so it's MEMF_PUBLIC.
 struct amiga_audio_internal
 {
+    // - - - threads thing
     struct Process *m_hMainProcess;
     struct Process *m_hThread;
+    struct MsgPort *m_MainProcessReplyPort; // could be transient, but factorise this.
     // - - - - - messages
     // main to thread:
     char m_useAHI;
@@ -92,11 +110,15 @@ struct amiga_audio_internal
     int m_ahi_error;
     // - - - - Paula
 
-    // - - - - buffers
+    // - - - - sound buffers
     // buffers of audio thread, passed to hardware or AHI
     // is SHORT* or BYTE *
 	SHORT *m_pSBuffAlloc,*m_pSBuff1, *m_pSBuff2;
 
+    // round buffers that are written by caller process,
+    // and read and passed to hardware by thread.
+    int     m_currentSampleFrame;
+    struct SampleFrame m_SampleFrames[8];
 };
 
 // this struct may be actually copy-passed to thread.
@@ -105,6 +127,164 @@ struct threadParamMsg
 	struct Message msg; // we're also a message.
     struct amiga_audio_internal *p;
 };
+
+// - - - - - - -- - - - - - - - - - -- - -
+
+// tools for mixing thread
+static inline int goodFrameP( struct SampleFrame *pFrame ) {
+    return( pFrame->_writelock==0 && pFrame->_read==0);
+}
+
+static inline int goodFrame(struct amiga_audio_internal *p , int iframe ) {
+     struct SampleFrame *pFrame =  &p->m_SampleFrames[iframe&7];
+    return( pFrame->_writelock==0 && pFrame->_read==0);
+}
+
+// return how much done.
+static inline ULONG soundMixOnThread16b(struct amiga_audio_internal *p ,struct sSoundToWrite *pSoundToWrite)
+{
+    WORD *ps = pSoundToWrite->m_pBuffer;
+    int icurrent;
+    WORD nToStillDo;
+    struct SampleFrame *pFrame ;
+    /*
+        MAMEMinimix has something here to watch if emulator cycles are running
+        since the last position, to detect "forced pause" and freeze states like wb left menu
+        or moving window, and pause the sound in that case.
+        You won't receive a message or interupt in those cases !
+    */
+    // note: mame frames and AHI buffers are meant to have the exact same size.
+    /*
+     *     cycles_t delta = (osd_cycles()-lastSoundFrameUpdate);
+    if(delta>(1000000LL>>2)) // 0.25 sec
+    {
+        // the engine looks blocked, it happens when window resize. fill blank.
+        UWORD lh = ((UWORD) pSoundToWrite->m_nbSampleToFill);
+        LONG *psl = (LONG *)ps; // copy 4 bytes
+        if(pSoundToWrite->m_stereo)
+        {
+            for(UWORD i=0; i<lh ; i++ ) *psl++ = 0;
+        } else
+        {
+            lh>>=1;
+            // mono
+            for(UWORD i=0; i<lh ; i++ ) *psl++ = 0;
+        }
+        return pSoundToWrite->m_nbSampleToFill;
+    } */
+
+    // emulated frames round buffers are now 8
+    nToStillDo = (WORD) pSoundToWrite->m_nbSampleToFill;
+
+    icurrent = (p->m_currentSampleFrame-3)&0x06;
+    // search 2 good frame consecutive frame and lock them.
+   // SampleFrame *pFrame = &SampleFrames[icurrent&7]; // test if missed previous
+    if(!goodFrame(p,icurrent) || !goodFrame(p,icurrent+1))
+    {
+        icurrent+=2;
+    }
+    // no good frame, emu too slow: mirror last consumed.
+    if(!goodFrame(p,icurrent) || !goodFrame(p,icurrent+1)  )
+    {
+        // just mirror alternate buffer if late.
+        UWORD lh = ((UWORD) pSoundToWrite->m_nbSampleToFill)>>1;
+        // point end of prev buffer
+
+        if(pSoundToWrite->m_stereo)
+        {
+            WORD *pr = pSoundToWrite->m_pPrevBuffer+(pSoundToWrite->m_nbSampleToFill<<1);
+            LONG *psl = (LONG *)ps; // copy 4 bytes
+            LONG *prl = (LONG *)pr;
+            for(UWORD i=0; i<lh ; i++ )
+            {
+                *psl++ = *--prl;
+            }
+            for(UWORD i=0; i<lh ; i++ )
+            {
+                *psl++ = *prl++;
+            }
+        } else
+        {
+            WORD *pr = pSoundToWrite->m_pPrevBuffer+(pSoundToWrite->m_nbSampleToFill);
+            // mono
+            for(UWORD i=0; i<lh ; i++ )
+            {
+                *ps++ = *--pr;
+            }
+            for(UWORD i=0; i<lh ; i++ )
+            {
+                *ps++ = *pr++;
+            }
+        }
+        return pSoundToWrite->m_nbSampleToFill;
+    }
+    pFrame =  &p->m_SampleFrames[icurrent&7];
+    // else readlock the 2
+    pFrame->_readlock = 1;
+    p->m_SampleFrames[(icurrent+1)&7]._readlock = 1;
+
+    while(nToStillDo>0)
+    {
+        // here we are good.
+//        INT32 *leftmix = pFrame->_leftmix;
+//        INT32 *rightmix = pFrame->_rightmix;
+
+        WORD ntodo =pSoundToWrite->m_nbSampleToFill>>1;
+
+//                /* (UWORD) pFrame->_written;
+//        if(nToStillDo<ntodo) ntodo = nToStillDo;*/
+//        nToStillDo -= ntodo;
+
+//    if(pSoundToWrite->m_stereo)
+//    {
+
+//        LONG cmin =-32768;
+//        LONG cmax =32767;
+//        for(WORD i=0; i<ntodo ; i++ )
+//        {
+//            /* clamp the left side */
+//            INT32 samp = leftmix[i];
+//            if (samp < cmin)
+//                samp = cmin;
+//            else if (samp > cmax)
+//                samp = cmax;
+//            *ps++ = (WORD)samp;
+
+//            /* clamp the right side */
+//            samp = rightmix[i];
+//            if (samp < cmin)
+//                samp = cmin;
+//            else if (samp > cmax)
+//                samp = cmax;
+//            *ps++ = (WORD)samp;
+//        }
+
+//    } else
+//    {
+//        LONG cmin =-32768;
+//        LONG cmax =32767;
+//        for(WORD i=0; i<ntodo ; i++ )
+//        {
+//            INT32 samp = leftmix[i]; //on mono now, all sounds forced to left. +rightmix[i];
+//            if (samp < cmin)
+//                samp = cmin;
+//            else if (samp > cmax)
+//                samp = cmax;
+//            *ps++ = (WORD)samp;
+
+//        }
+
+//    }
+    pFrame->_read = ntodo;
+    pFrame->_readlock = 0;
+
+    icurrent++;
+    pFrame = &p->m_SampleFrames[icurrent&7];
+
+    } // end while todo
+    return pSoundToWrite->m_nbSampleToFill;
+}
+
 
 static void AudioThread_AHI_Close(struct amiga_audio_internal *p);
 static void AudioThread_AHI_Init(struct amiga_audio_internal *p)
@@ -188,8 +368,8 @@ static void AudioThread_AHI_Loop(struct amiga_audio_internal *p)
                iloop++;
             } else
             {
-             numSampleWritten = soundToWrite.m_nbSampleToFill;
-                // numSampleWritten = soundMixOnThread( &soundToWrite );
+            // numSampleWritten = soundToWrite.m_nbSampleToFill;
+                numSampleWritten = soundMixOnThread16b( p,&soundToWrite );
             }
 
             {
@@ -351,6 +531,8 @@ static void AudioThread(void)
 
 }
 
+// - - - - - - retroarch api
+
 
 void *amiga_audio_init(const char *device,
 	unsigned rate, unsigned latency,
@@ -377,8 +559,35 @@ void *amiga_audio_init(const char *device,
     // AHI crash if too short it seems (do not go lower than 11khz)
     if(p->m_sampleUpdateLength<256) p->m_sampleUpdateLength=256;
 
+
+    // - - - alloc round buffers, shared by both process
+    {
+        int i;
+        // KRB note: this specific amiga implemtation assume frames
+        // are fixed length, so alloc size is samples_this_frame.
+        ULONG streambytelength =  p->m_sampleUpdateLength * sizeof(ismpl_t);
+        ULONG bigsize = streambytelength*nbSampleFrame;
+        ismpl_t *pMixmem;
+        if(p->m_stereo) bigsize*=2;
+        pMixmem = (ismpl_t *)AllocVec(bigsize,MEMF_CLEAR | MEMF_PUBLIC);
+        if(!pMixmem) {
+            FreeVec(p);
+            return NULL;
+        }
+        for(i=0;i<nbSampleFrame;i++)
+        {
+            p->m_SampleFrames[i]._mix = pMixmem;
+            pMixmem += (p->m_stereo)?(p->m_sampleUpdateLength<<1):(p->m_sampleUpdateLength) ;
+
+        }
+    }
+
+
+
  printf("create process\n");
     // - - - - - create thread the os3 way and pass params - - - - - -
+    p->m_MainProcessReplyPort = CreateMsgPort(); // factorise that.
+
 	{
 		struct TagItem threadTags[] = { NP_Entry,(ULONG) &AudioThread,
                         NP_Priority,    60  , // int8; -128 .. 127 DO NOT HOG !!
@@ -390,7 +599,7 @@ void *amiga_audio_init(const char *device,
         p->m_hThread = CreateNewProc( threadTags  );
 	}
 	if(!p->m_hThread ){
-        FreeVec(p);
+    	amiga_audio_free(p);
         return NULL;
 	}
 	{
@@ -398,7 +607,7 @@ void *amiga_audio_init(const char *device,
 
  printf("send init params\n");
 
-        tpm.msg.mn_ReplyPort = CreateMsgPort();
+        tpm.msg.mn_ReplyPort = p->m_MainProcessReplyPort;
         tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
         tpm.p = p;
 
@@ -406,19 +615,91 @@ void *amiga_audio_init(const char *device,
         WaitPort(tpm.msg.mn_ReplyPort);
 		(void) GetMsg(tpm.msg.mn_ReplyPort);
 
-		DeleteMsgPort(tpm.msg.mn_ReplyPort);
  printf("after send init params\n");
     }
 
     return (void *)p;
 }
 
-// Assume 16 Bit Samples
+/* note this is to be streamed by frame.
+if we were sure "len" is always same size as m_sampleUpdateLength
+it would be easy.
+We have to take account of the case it uses half a sampleFrame.
+or parts of 2 consecutive sampleFrames.
+*/
+// Assume 16 Bit Samples, stereo
 size_t amiga_audio_write(void *data, const void *s, size_t len)
-{
+{    
+    size_t sdone=0;
+    const ismpl_t *pread = (const ismpl_t *)s;
     struct amiga_audio_internal *p = ( struct amiga_audio_internal *)data;
 
+    if(!p || !pread || len==0) return 0;
+
+    while(len>0)
+    {
+        struct SampleFrame *pFrame;
+        ULONG appliedlen;
+        if(p->m_SampleFrames[p->m_currentSampleFrame]._written == p->m_sampleUpdateLength)
+        {
+            p->m_currentSampleFrame = (p->m_currentSampleFrame+1)& 7;
+            p->m_SampleFrames[p->m_currentSampleFrame]._written = 0;
+        }
+        pFrame = &p->m_SampleFrames[p->m_currentSampleFrame];
+
+        pFrame->_writelock =1;
+        appliedlen = p->m_sampleUpdateLength - pFrame->_written;
+        if(len<appliedlen) appliedlen = len;
+        if(p->m_stereo)
+        {
+            int i;
+            ismpl_t *pmix = pFrame->_mix + (pFrame->_written*2);
+            // would memcpy...
+            for(i=0;i<appliedlen;i++)
+            {
+                *pmix++ = *pread++;
+                *pmix++ = *pread++;
+            }
+
+        } else
+        {
+            // mono
+            int i;
+            ismpl_t *pmix = pFrame->_mix + (pFrame->_written);
+            // would memcpy...
+            for(i=0;i<appliedlen;i++) *pmix++ = *pread++;
+        }
+        pFrame->_written += appliedlen;
+        if( pFrame->_written == p->m_sampleUpdateLength)
+        {   // make it available.
+            pFrame->_read = 0;
+            pFrame->_writelock =0;
+        }
+        len -= appliedlen;
+        sdone += appliedlen;
+    } // end while len>0
+
+    return sdone;
+
 }
+// send message and wait result.
+static inline void sendThreadMessage(struct amiga_audio_internal *p, char askToPlay, char askEnd )
+{
+    struct threadParamMsg tpm;
+
+    if(!p->m_hThread) return;
+
+    tpm.msg.mn_ReplyPort = p->m_MainProcessReplyPort;
+    tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
+    tpm.p = p;
+    p->m_askedtoplay = askToPlay; // when this is set to 0, play loop will quit within 1 frame.
+    p->m_askThreadEnd = askEnd;
+    PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
+    WaitPort(tpm.msg.mn_ReplyPort);
+    (void) GetMsg(tpm.msg.mn_ReplyPort); // flush.
+
+}
+
 // Stops replay
 bool amiga_audio_stop(void *data)
 {
@@ -427,22 +708,9 @@ bool amiga_audio_stop(void *data)
 
     if(!p->m_isplaying) return 0;
 
-    {
-    	struct threadParamMsg tpm;
-
-        tpm.msg.mn_ReplyPort = CreateMsgPort();
-        tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
-        tpm.p = p;
-        p->m_askedtoplay = 0; // when this is set, play loop will quit in 2 frames max.
-        PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
-        WaitPort(tpm.msg.mn_ReplyPort);
-		(void) GetMsg(tpm.msg.mn_ReplyPort);
-
-		DeleteMsgPort(tpm.msg.mn_ReplyPort);
-    }
+    sendThreadMessage(p,0,0); // m_askedtoplay =0, makes loop quit and go in wait message mode.
 
     return 0;
-
 }
 
 // starts replay
@@ -451,19 +719,9 @@ bool amiga_audio_start(void *data, bool is_shutdown)
     struct amiga_audio_internal *p = (struct amiga_audio_internal *)data;
     if(!p) return 0;
 
-    {
-    	struct threadParamMsg tpm;
+    if(p->m_askedtoplay) return 1; // doing 2 consecutive start()  would actually freeze WaitPort().
 
-        tpm.msg.mn_ReplyPort = CreateMsgPort();
-        tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
-        tpm.p = p;
-        p->m_askedtoplay = 1;
-        PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
-        WaitPort(tpm.msg.mn_ReplyPort);
-		(void) GetMsg(tpm.msg.mn_ReplyPort);
-
-		DeleteMsgPort(tpm.msg.mn_ReplyPort);
-    }
+    sendThreadMessage(p,1,0); // m_askedtoplay =1
 
     return (int)p->m_isplaying;
 }
@@ -473,22 +731,15 @@ void amiga_audio_free(void *data)
     struct amiga_audio_internal *p = (struct amiga_audio_internal *)data;
     if(!p) return;
 
-    {
-    	struct threadParamMsg tpm;
+    sendThreadMessage(p,0,1); //   m_askedtoplay =0, m_askThreadEnd =1 -> quit loop, get end message.
+    // at this point thread process should have died.
 
-        tpm.msg.mn_ReplyPort = CreateMsgPort();
-        tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
-        tpm.p = p;
-        p->m_askedtoplay = 0; // makes loop quit.
-        p->m_askThreadEnd = 1;
-        PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
-        WaitPort(tpm.msg.mn_ReplyPort); // wait end of thread Process in that case.
-		(void) GetMsg(tpm.msg.mn_ReplyPort);
+    if(p->m_MainProcessReplyPort) DeleteMsgPort(p->m_MainProcessReplyPort);
 
-		DeleteMsgPort(tpm.msg.mn_ReplyPort);
-    }
+    // free all mem for round buffer
+    if(p->m_SampleFrames[0]._mix) FreeVec(p->m_SampleFrames[0]._mix);
 
     FreeVec(p);
- printf("final post delete, thread is dead, AHI is closed, memory is freed.\n");
+    printf("final post delete, thread is dead, AHI is closed, memory is freed.\n");
 }
 
