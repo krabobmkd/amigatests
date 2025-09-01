@@ -12,8 +12,9 @@ add_executable(RetroArchAudioTest
 			amiga_retroarch_audio_test.c
 		)
 
-
-target_compile_options(RetroArchAudioTest PRIVATE -Os -save-temps -m68020 )
+# note: just set "-m68060 -mhard-float -ffast-math" just to uses sinf() i test main
+# if not busing main() can be ok with just  -m68020
+target_compile_options(RetroArchAudioTest PRIVATE -Os -save-temps -m68060 -mhard-float -ffast-math )
 target_link_options(RetroArchAudioTest PRIVATE -s )
 # target_include_directories(RetroArchAudioTest PUBLIC ${ZLIBPATH} )
 #target_link_libraries(BoopsiWizard PUBLIC z )

@@ -75,10 +75,7 @@ typedef enum {
 	eAHIS_NumberOfError // used to extend the error list by other libs.
 } eAHIError;
 
-
-
-
-#define nbSampleFrame 8
+#define nbSampleFrame 4
 
 // https://sintonen.fi/src/ipc/ipctest.c
 
@@ -136,9 +133,12 @@ static inline int goodFrameP( struct SampleFrame *pFrame ) {
 }
 
 static inline int goodFrame(struct amiga_audio_internal *p , int iframe ) {
-     struct SampleFrame *pFrame =  &p->m_SampleFrames[iframe&7];
+     struct SampleFrame *pFrame =  &p->m_SampleFrames[iframe&3];
     return( pFrame->_writelock==0 && pFrame->_read==0);
 }
+
+int nbmirror=0;
+int nbok = 0;
 
 // return how much done.
 static inline ULONG soundMixOnThread16b(struct amiga_audio_internal *p ,struct sSoundToWrite *pSoundToWrite)
@@ -176,112 +176,73 @@ static inline ULONG soundMixOnThread16b(struct amiga_audio_internal *p ,struct s
     // emulated frames round buffers are now 8
     nToStillDo = (WORD) pSoundToWrite->m_nbSampleToFill;
 
-    icurrent = (p->m_currentSampleFrame-3)&0x06;
+    icurrent = (p->m_currentSampleFrame-2)&0x03;
     // search 2 good frame consecutive frame and lock them.
    // SampleFrame *pFrame = &SampleFrames[icurrent&7]; // test if missed previous
-    if(!goodFrame(p,icurrent) || !goodFrame(p,icurrent+1))
+    if(!goodFrame(p,icurrent) )
     {
-        icurrent+=2;
+        icurrent++;
     }
+//    if(!goodFrame(p,icurrent+1) || !goodFrame(p,icurrent+2))
+//    {
+//        icurrent+=3;
+//    }
     // no good frame, emu too slow: mirror last consumed.
-    if(!goodFrame(p,icurrent) || !goodFrame(p,icurrent+1)  )
+    if(!goodFrame(p,icurrent)  )
     {
+   nbmirror++;
         // just mirror alternate buffer if late.
         UWORD lh = ((UWORD) pSoundToWrite->m_nbSampleToFill)>>1;
         // point end of prev buffer
 
-        if(pSoundToWrite->m_stereo)
-        {
-            WORD *pr = pSoundToWrite->m_pPrevBuffer+(pSoundToWrite->m_nbSampleToFill<<1);
-            LONG *psl = (LONG *)ps; // copy 4 bytes
-            LONG *prl = (LONG *)pr;
-            for(UWORD i=0; i<lh ; i++ )
-            {
-                *psl++ = *--prl;
-            }
-            for(UWORD i=0; i<lh ; i++ )
-            {
-                *psl++ = *prl++;
-            }
-        } else
-        {
-            WORD *pr = pSoundToWrite->m_pPrevBuffer+(pSoundToWrite->m_nbSampleToFill);
-            // mono
-            for(UWORD i=0; i<lh ; i++ )
-            {
-                *ps++ = *--pr;
-            }
-            for(UWORD i=0; i<lh ; i++ )
-            {
-                *ps++ = *pr++;
-            }
-        }
+//        if(pSoundToWrite->m_stereo)
+//        {
+//            WORD *pr = pSoundToWrite->m_pPrevBuffer+(pSoundToWrite->m_nbSampleToFill);
+//            LONG *psl = (LONG *)ps; // copy 4 bytes
+//            LONG *prl = (LONG *)pr;
+//            for(UWORD i=0; i<lh ; i++ )
+//            {
+//                *psl++ = *--prl;
+//            }
+//            for(UWORD i=0; i<lh ; i++ )
+//            {
+//                *psl++ = *prl++;
+//            }
+//        } else
+//        {
+//            WORD *pr = pSoundToWrite->m_pPrevBuffer+(pSoundToWrite->m_nbSampleToFill/2);
+//            // mono
+//            for(UWORD i=0; i<lh ; i++ )
+//            {
+//                *ps++ = *--pr;
+//            }
+//            for(UWORD i=0; i<lh ; i++ )
+//            {
+//                *ps++ = *pr++;
+//            }
+//        }
         return pSoundToWrite->m_nbSampleToFill;
     }
-    pFrame =  &p->m_SampleFrames[icurrent&7];
-    // else readlock the 2
-    pFrame->_readlock = 1;
-    p->m_SampleFrames[(icurrent+1)&7]._readlock = 1;
+    pFrame =  &p->m_SampleFrames[icurrent&3];
+  pFrame->_readlock = 1;
+ nbok++;
 
-    while(nToStillDo>0)
+    // here we are good.
+    const ismpl_t *mix = pFrame->_mix;
+
+    WORD ntodo2 = nToStillDo;
+    if(pSoundToWrite->m_stereo) ntodo2*=2;
+
+    for(WORD i=0; i<ntodo2 ; i++ )
     {
-        // here we are good.
-//        INT32 *leftmix = pFrame->_leftmix;
-//        INT32 *rightmix = pFrame->_rightmix;
+        *ps++ = *mix++;
+    }
 
-        WORD ntodo =pSoundToWrite->m_nbSampleToFill>>1;
-
-//                /* (UWORD) pFrame->_written;
-//        if(nToStillDo<ntodo) ntodo = nToStillDo;*/
-//        nToStillDo -= ntodo;
-
-//    if(pSoundToWrite->m_stereo)
-//    {
-
-//        LONG cmin =-32768;
-//        LONG cmax =32767;
-//        for(WORD i=0; i<ntodo ; i++ )
-//        {
-//            /* clamp the left side */
-//            INT32 samp = leftmix[i];
-//            if (samp < cmin)
-//                samp = cmin;
-//            else if (samp > cmax)
-//                samp = cmax;
-//            *ps++ = (WORD)samp;
-
-//            /* clamp the right side */
-//            samp = rightmix[i];
-//            if (samp < cmin)
-//                samp = cmin;
-//            else if (samp > cmax)
-//                samp = cmax;
-//            *ps++ = (WORD)samp;
-//        }
-
-//    } else
-//    {
-//        LONG cmin =-32768;
-//        LONG cmax =32767;
-//        for(WORD i=0; i<ntodo ; i++ )
-//        {
-//            INT32 samp = leftmix[i]; //on mono now, all sounds forced to left. +rightmix[i];
-//            if (samp < cmin)
-//                samp = cmin;
-//            else if (samp > cmax)
-//                samp = cmax;
-//            *ps++ = (WORD)samp;
-
-//        }
-
-//    }
-    pFrame->_read = ntodo;
+    pFrame->_read += nToStillDo;
+    //if(pFrame->_read == pFrame->_written)
     pFrame->_readlock = 0;
 
-    icurrent++;
-    pFrame = &p->m_SampleFrames[icurrent&7];
 
-    } // end while todo
     return pSoundToWrite->m_nbSampleToFill;
 }
 
@@ -330,7 +291,7 @@ static void AudioThread_AHI_Init(struct amiga_audio_internal *p)
     }
 
     p->m_pSBuff1 = p->m_pSBuffAlloc;
-    p->m_pSBuff2 = p->m_pSBuffAlloc + (streamBytes>>1);
+    p->m_pSBuff2 = p->m_pSBuffAlloc + (streamBytes/sizeof(WORD)); // >>1 because 2bytes type.
 
     p->m_ahi_error = eAHIS_ok;
     p->m_isplaying = 1;
@@ -368,8 +329,8 @@ static void AudioThread_AHI_Loop(struct amiga_audio_internal *p)
                iloop++;
             } else
             {
-             numSampleWritten = soundToWrite.m_nbSampleToFill;
-            //    numSampleWritten = soundMixOnThread16b( p,&soundToWrite );
+             //numSampleWritten = soundToWrite.m_nbSampleToFill;
+                numSampleWritten = soundMixOnThread16b( p,&soundToWrite );
             }
 
             {
@@ -553,13 +514,12 @@ void *amiga_audio_init(const char *device,
     if(new_rate) *new_rate = rate;
     p->m_stereo = 1;
 
-    // sound thread will work at 30Hz:
-    const int ifps =60; // on MAME it varies: 50,56,59,60
-    p->m_sampleUpdateLength = ((p->m_freq*2/ifps)+3)& 0xfffffffc;
+    // would mean sund thread will update at 30Hz
+    p->m_sampleUpdateLength = ((p->m_freq/30)+3)& 0xfffffffc;
     // AHI crash if too short it seems (do not go lower than 11khz)
     if(p->m_sampleUpdateLength<256) p->m_sampleUpdateLength=256;
 
-
+ printf("p->m_sampleUpdateLength:%d\n",p->m_sampleUpdateLength);
     // - - - alloc round buffers, shared by both process
     {
         int i;
@@ -577,12 +537,10 @@ void *amiga_audio_init(const char *device,
         for(i=0;i<nbSampleFrame;i++)
         {
             p->m_SampleFrames[i]._mix = pMixmem;
-            pMixmem += (p->m_stereo)?(p->m_sampleUpdateLength<<1):(p->m_sampleUpdateLength) ;
+            pMixmem += (p->m_stereo)?(p->m_sampleUpdateLength*2):(p->m_sampleUpdateLength) ;
 
         }
     }
-
-
 
  printf("create process\n");
     // - - - - - create thread the os3 way and pass params - - - - - -
@@ -620,7 +578,7 @@ void *amiga_audio_init(const char *device,
 
     return (void *)p;
 }
-
+int wrrounddone=0;
 /* note this is to be streamed by frame.
 if we were sure "len" is always same size as m_sampleUpdateLength
 it would be easy.
@@ -633,21 +591,30 @@ size_t amiga_audio_write(void *data, const void *s, size_t len)
     size_t sdone=0;
     const ismpl_t *pread = (const ismpl_t *)s;
     struct amiga_audio_internal *p = ( struct amiga_audio_internal *)data;
+    struct SampleFrame *pFrame;
 
     if(!p || !pread || len==0) return 0;
+    if(!p->m_isplaying) return 0;
 
-    while(len>0)
+wrrounddone=0;
+    pFrame = &p->m_SampleFrames[p->m_currentSampleFrame];
+    while(1)
     {
-        struct SampleFrame *pFrame;
         ULONG appliedlen;
-        if(p->m_SampleFrames[p->m_currentSampleFrame]._written == p->m_sampleUpdateLength)
-        {
-            p->m_currentSampleFrame = (p->m_currentSampleFrame+1)& 7;
-            p->m_SampleFrames[p->m_currentSampleFrame]._written = 0;
-        }
-        pFrame = &p->m_SampleFrames[p->m_currentSampleFrame];
 
-        pFrame->_writelock =1;
+        if(pFrame->_written == p->m_sampleUpdateLength)
+        {
+            pFrame->_read = 0;
+            pFrame->_writelock =0;
+
+            p->m_currentSampleFrame = (p->m_currentSampleFrame+1)& 3;
+            pFrame = &p->m_SampleFrames[p->m_currentSampleFrame];
+
+            pFrame->_written = 0;
+            pFrame->_writelock =1;
+        }
+        if(len<=0) break;
+
         appliedlen = p->m_sampleUpdateLength - pFrame->_written;
         if(len<appliedlen) appliedlen = len;
         if(p->m_stereo)
@@ -670,14 +637,22 @@ size_t amiga_audio_write(void *data, const void *s, size_t len)
             for(i=0;i<appliedlen;i++) *pmix++ = *pread++;
         }
         pFrame->_written += appliedlen;
-        if( pFrame->_written == p->m_sampleUpdateLength)
-        {   // make it available.
-            pFrame->_read = 0;
-            pFrame->_writelock =0;
-        }
         len -= appliedlen;
         sdone += appliedlen;
+
+    wrrounddone++;
     } // end while len>0
+
+
+static int ifr=0;
+ifr++;
+if(ifr==50){
+    ifr=0;
+    printf("nbmir:%d nbok:%d wrrounddone:%d\n",nbmirror,nbok,wrrounddone);
+    nbmirror=0;
+    nbok=0;
+
+}
 
     return sdone;
 
@@ -708,6 +683,7 @@ bool amiga_audio_stop(void *data)
 
     if(!p->m_isplaying) return 0;
 
+
     sendThreadMessage(p,0,0); // m_askedtoplay =0, makes loop quit and go in wait message mode.
 
     return 0;
@@ -716,10 +692,15 @@ bool amiga_audio_stop(void *data)
 // starts replay
 bool amiga_audio_start(void *data, bool is_shutdown)
 {
+    struct SampleFrame *pFrame;
     struct amiga_audio_internal *p = (struct amiga_audio_internal *)data;
     if(!p) return 0;
 
     if(p->m_askedtoplay) return 1; // doing 2 consecutive start()  would actually freeze WaitPort().
+
+    pFrame = &p->m_SampleFrames[p->m_currentSampleFrame];
+    pFrame->_written = 0;
+    pFrame->_writelock =1;
 
     sendThreadMessage(p,1,0); // m_askedtoplay =1
 

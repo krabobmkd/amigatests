@@ -25,9 +25,11 @@ int VBlankInterface( void )
 
 
 void *RAAudio=NULL;
+WORD *buffer=NULL;
 
 static void closemain()
 {
+    if(buffer) FreeVec(buffer);
     if(vblank_ok) {
      RemIntServer(INTB_VERTB, &VertBlank);
     }	
@@ -63,7 +65,10 @@ int main(int argc, char **argv)
 	amiga_audio_start(RAAudio,FALSE);
 
 	printf("main process enter loop\n");
-	size_t subsamplelength = ((rate/50)+15) & (~15); // 16 align
+	size_t subsamplelength = ((rate/50)+3) & (~3); // 16 align
+	printf("subsamplelength:%d\n",subsamplelength);
+    buffer = AllocVec(subsamplelength*2,MEMF_CLEAR);
+
 	unsigned isample=0;
     while(1) 
     {
@@ -72,17 +77,16 @@ int main(int argc, char **argv)
 		if((signals & SIGBREAKF_CTRL_C)!=0) break;
 		
 		// write some 440Hz sinus as audio
-		// WORD temp[subsample*2];
-		// float freqdivider = 440.0f/(rate*M_PI);
-		// for(unsigned i=0;i<(subsamplelength);i++)
-		// {
-		// 	WORD s = (WORD)(sinf(((float)(i+isample))*freqdivider)*32767.0f);
-		// 	temp[i*2] = s
-		// 	temp[i*2+1] = s;
-		// }
-		// isample += subsamplelength;
+		 float freqdividerL = (440.0f*M_PI*2.0f)/(float)(rate);
+		 float freqdividerR = (440.0f*M_PI*2.0f)/(float)(rate);
+		 for(unsigned i=0;i<(subsamplelength);i++)
+		 {
+		 	buffer[i*2] = (WORD)(sinf(((float)(i+isample))*freqdividerL)*16384.0f);
+		 	buffer[i*2+1] = (WORD)(sinf(((float)(i+isample))*freqdividerR)*16384.0f);
+		 }
+		 isample += subsamplelength;
 		
-		// size_t done = amiga_audio_write(RAAudio, (const void *)&temp[0],subsamplelength);
+		 size_t done = amiga_audio_write(RAAudio, (const void *)buffer,subsamplelength);
 		
 	}
 	printf("main process out of the loop, ask stop\n");
