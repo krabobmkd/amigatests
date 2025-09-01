@@ -65,9 +65,9 @@ int main(int argc, char **argv)
 	amiga_audio_start(RAAudio,FALSE);
 
 	printf("main process enter loop\n");
-	size_t subsamplelength = ((rate/50)+3) & (~3); // 16 align
+	size_t subsamplelength = (rate/60); // 16 align
 	printf("subsamplelength:%d\n",subsamplelength);
-    buffer = AllocVec(subsamplelength*2,MEMF_CLEAR);
+    buffer = AllocVec(subsamplelength*4,MEMF_CLEAR);
 
 	unsigned isample=0;
     while(1) 
@@ -75,14 +75,19 @@ int main(int argc, char **argv)
 		// wait quit signal or timer
         ULONG signals = Wait(SIGBREAKF_CTRL_C | SIGBREAKF_CTRL_F);
 		if((signals & SIGBREAKF_CTRL_C)!=0) break;
-		
+		SetSignal(0,SIGBREAKF_CTRL_F);
+
+
 		// write some 440Hz sinus as audio
 		 float freqdividerL = (440.0f*M_PI*2.0f)/(float)(rate);
-		 float freqdividerR = (440.0f*M_PI*2.0f)/(float)(rate);
+		 float freqdividerR = (220.0f*M_PI*2.0f)/(float)(rate);
 		 for(unsigned i=0;i<(subsamplelength);i++)
 		 {
-		 	buffer[i*2] = (WORD)(sinf(((float)(i+isample))*freqdividerL)*16384.0f);
-		 	buffer[i*2+1] = (WORD)(sinf(((float)(i+isample))*freqdividerR)*16384.0f);
+		 	buffer[i*2] = (WORD)(sinf(((float)(i+isample))*freqdividerL)*16000.0f);
+		 	buffer[i*2+1] = (WORD)(sinf(((float)(i+isample))*freqdividerR)*25000.0f);
+
+
+
 		 }
 		 isample += subsamplelength;
 		
