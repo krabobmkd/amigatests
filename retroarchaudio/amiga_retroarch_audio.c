@@ -98,6 +98,7 @@ struct amiga_audio_internal
     // main to thread
     ULONG m_freq; // in hz, likely 22050...
     ULONG m_sampleUpdateLength; // computed from freq, then rounded.
+    ULONG m_mixdivcte;
     ULONG m_stereo;
     // - - - - AHI
 	struct MsgPort 	*m_AHImp;
@@ -127,18 +128,17 @@ struct threadParamMsg
 };
 
 // - - - - - - -- - - - - - - - - - -- - -
-
+#ifdef ARA_DEBUGTRACE
 int nbmirror=0;
-int nbok = 0;
-
+int nbexact = 0;
+int nbfar=0;
+#endif
 // return how much done.
 static inline ULONG soundMixOnThread16b(struct amiga_audio_internal *p ,struct sSoundToWrite *pSoundToWrite)
 {
     WORD *ps = pSoundToWrite->m_pBuffer;
     int icurrent;
     WORD nToStillDo;
-    struct SampleFrame *pFrame ;
-
 
     /*
         MAMEMinimix has something here to watch if emulator cycles are running
@@ -151,30 +151,26 @@ static inline ULONG soundMixOnThread16b(struct amiga_audio_internal *p ,struct s
      *     cycles_t delta = (osd_cycles()-lastSoundFrameUpdate);
     if(delta>(1000000LL>>2)) // 0.25 sec
     {
-        // the engine looks blocked, it happens when window resize. fill blank.
-        UWORD lh = ((UWORD) pSoundToWrite->m_nbSampleToFill);
-        LONG *psl = (LONG *)ps; // copy 4 bytes
-        if(pSoundToWrite->m_stereo)
-        {
-            for(UWORD i=0; i<lh ; i++ ) *psl++ = 0;
-        } else
-        {
-            lh>>=1;
-            // mono
-            for(UWORD i=0; i<lh ; i++ ) *psl++ = 0;
-        }
+        (buffer cleaning)
         return pSoundToWrite->m_nbSampleToFill;
-    } */
+    }
+        idea: if too much continuous mirroring cases (0.5s) , fall in sort of pause mode.
+    */
 
+
+    // - - - continuity at all cost. - -  - -
     // emulated frames round buffers are now 8
     nToStillDo = (WORD) pSoundToWrite->m_nbSampleToFill;
+    // last written available is m_iFrame_written-1
+    LONG iframewritten = (LONG) p->m_iFrame_written; // consider state frozen now.
+    LONG framedelta = iframewritten - (LONG)p->m_iFrame_read;
 
-//    pFrame =  &p->m_SampleFrames[(p->m_iFrame_written-2)&nbSampleFrameMask];
-    pFrame =  &p->m_SampleFrames[(p->m_iFrame_read)&nbSampleFrameMask];
-    // no good frame, emu too slow: mirror last consumed.
-    if(pFrame->_writelock || pFrame->_written < p->m_sampleUpdateLength )
+    if(framedelta<=0 )
     {
-   nbmirror++;
+        // too slow, mirror technique
+#ifdef ARA_DEBUGTRACE
+    nbmirror++;
+#endif
         // just mirror alternate buffer if late.
         UWORD lh = ((UWORD) pSoundToWrite->m_nbSampleToFill)>>1;
         // point end of prev buffer
@@ -207,27 +203,89 @@ static inline ULONG soundMixOnThread16b(struct amiga_audio_internal *p ,struct s
        }
         return pSoundToWrite->m_nbSampleToFill;
     }
-
-  pFrame->_readlock = 1;
- nbok++;
-
-    // here we are good.
-    const ismpl_t *mix = pFrame->_mix;
-
-    WORD ntodo2 = nToStillDo;
-    if(pSoundToWrite->m_stereo) ntodo2*=2;
-
-
-    for(WORD i=0; i<ntodo2 ; i++ )
+    if(framedelta <= 3) // 2 available,but in that case treat one. may sync.
     {
-        *ps++ = *mix++;
-    }
-    pFrame->_read += nToStillDo;
-    pFrame->_written = 0;
-    //if(pFrame->_read == pFrame->_written)
-    pFrame->_readlock = 0;
+#ifdef ARA_DEBUGTRACE
+nbexact++;
+#endif
+        // ideal, same speed
+        struct SampleFrame *pFrame =  &p->m_SampleFrames[(p->m_iFrame_read)&nbSampleFrameMask];
 
-    p->m_iFrame_read++;
+        const ismpl_t *mix = pFrame->_mix;
+
+        WORD ntodo2 = nToStillDo;
+        if(pSoundToWrite->m_stereo) ntodo2*=2;
+
+        for(WORD i=0; i<ntodo2 ; i++ )
+        {
+            *ps++ = *mix++;
+        }
+        pFrame->_written = 0;
+
+        p->m_iFrame_read++;  // +1 in that case
+        return pSoundToWrite->m_nbSampleToFill;
+    }
+    //
+#ifdef ARA_DEBUGTRACE
+nbfar++;
+#endif
+    // framedelta>1 sound written too fast, mix 2 frames
+
+    // mix from p->m_iFrame_read +1 to iwritten.
+    struct SampleFrame *pFrame_a =  &p->m_SampleFrames[(p->m_iFrame_read)&nbSampleFrameMask];
+    struct SampleFrame *pFrame_b =  &p->m_SampleFrames[(iframewritten-1)&nbSampleFrameMask];
+    const ismpl_t *mixa = pFrame_a->_mix;
+    const ismpl_t *mixb = pFrame_b->_mix;
+    // first quarter as a
+    {
+        WORD ntodo2 = nToStillDo>>2;
+        if(pSoundToWrite->m_stereo) ntodo2*=2;
+        mixb += ntodo2;
+        for(WORD i=0; i<ntodo2 ; i++ )
+        {
+            *ps++ = *mixa++;
+        }
+    }
+    // middle  mix ->b
+    {
+        WORD ntodo2 = nToStillDo>>1;
+        ULONG addx= p->m_mixdivcte; //0x10000/ntodo2; // totally constant.
+        ULONG w=0;
+        if(pSoundToWrite->m_stereo)
+        {
+            for(WORD i=0; i<ntodo2 ; i++ )
+            {
+                LONG w2 = w>>8;
+                LONG iw = 0x100 - w2;
+                *ps++ = ((*mixa++ * iw) +(*mixb++ * w2))>>8;
+                *ps++ = ((*mixa++ * iw) +(*mixb++ * w2))>>8;
+                w += addx;
+            }
+        } else
+        { // mono
+            for(WORD i=0; i<ntodo2 ; i++ )
+            {
+                LONG w2 = w>>8;
+                LONG iw = 0x100 - w2;
+                *ps++ = ((*mixa++ * iw) +(*mixb++ * w2))>>8;
+                w += addx;
+            }
+
+        }
+
+    } // end middle mix
+    // last quarter as b
+    {
+        WORD ntodo2 = nToStillDo>>2;
+        if(pSoundToWrite->m_stereo) ntodo2*=2;
+
+        for(WORD i=0; i<ntodo2 ; i++ )
+        {
+            *ps++ = *mixb++;
+        }
+    }
+// - - - - -
+    p->m_iFrame_read = iframewritten; // +more than1
 
     return pSoundToWrite->m_nbSampleToFill;
 }
@@ -245,7 +303,7 @@ static void AudioThread_AHI_Init(struct amiga_audio_internal *p)
     if (p->m_AHIio) {
         p->m_AHIio->ahir_Version = 4;
         deviceResult =
-            OpenDevice(AHINAME,AHI_DEFAULT_UNIT, (struct IORequest *)(p->m_AHIio), 0);
+            OpenDevice("ahi.device",AHI_DEFAULT_UNIT, (struct IORequest *)(p->m_AHIio), 0);
     }
     if (deviceResult) {
         p->m_ahi_error = eAHIS_DeviceError;
@@ -328,7 +386,7 @@ static void AudioThread_AHI_Loop(struct amiga_audio_internal *p)
                 if(p->m_stereo)
                 {
                    AHIio->ahir_Type = AHIST_S16S;
-                   AHIio->ahir_Std.io_Length = numSampleWritten<<2;
+                   AHIio->ahir_Std.io_Length = numSampleWritten<<2; // number of bytes transfered.
                 } else
                 {   // mono
                    AHIio->ahir_Type = AHIST_M16S;
@@ -413,8 +471,11 @@ static void AudioThread_Paula_Close(struct amiga_audio_internal *p)
 }
 
 struct AudioDriver{
+    // start resource
     void (*init)(struct amiga_audio_internal *p);
+    // manage audio double buffer, must quit as soon as possible when p->m_askedtoplay==0
     void (*loop)(struct amiga_audio_internal *p);
+    // free resource
     void (*close)(struct amiga_audio_internal *p);
 };
 
@@ -428,9 +489,9 @@ static void AudioThread(void)
 	msg = (struct threadParamMsg *) GetMsg(&pThread->pr_MsgPort);
     p = msg->p;
     ReplyMsg((APTR) msg);
-
+#ifdef ARA_DEBUGTRACE
  printf("Hello, it's audio thread %d samplepartlength:%d\n",p->m_freq,p->m_sampleUpdateLength);
-
+#endif
     struct AudioDriver ad;
     if(p->m_useAHI) {
         ad.init = &AudioThread_AHI_Init;
@@ -463,8 +524,9 @@ static void AudioThread(void)
         // reply msg only after init result,
 
         ad.init(p);
+#ifdef ARA_DEBUGTRACE
  printf("After init p->m_isplaying:%d\n",p->m_isplaying);
-
+#endif
         ReplyMsg((APTR) msg);
         if(p->m_isplaying)
         {
@@ -498,12 +560,16 @@ void *amiga_audio_init(const char *device,
     if(new_rate) *new_rate = rate;
     p->m_stereo = 1;
 
-    // would mean sund thread will update at 30Hz
-    p->m_sampleUpdateLength = ((p->m_freq/30)+3)& 0xfffffffc;
+    // would mean sound thread will update at 30Hz
+    p->m_sampleUpdateLength = ((p->m_freq/30)+3)& 0xfffffffc; // also need 4-aligned for some reason.
     // AHI crash if too short it seems (do not go lower than 11khz)
     if(p->m_sampleUpdateLength<256) p->m_sampleUpdateLength=256;
 
+    p->m_mixdivcte = 0x10000/(p->m_sampleUpdateLength>>1);
+
+#ifdef ARA_DEBUGTRACE
  printf("p->m_sampleUpdateLength:%d\n",p->m_sampleUpdateLength);
+#endif
     // - - - alloc round buffers, shared by both process
     {
         int i;
@@ -525,8 +591,9 @@ void *amiga_audio_init(const char *device,
 
         }
     }
-
+#ifdef ARA_DEBUGTRACE
  printf("create process\n");
+#endif
     // - - - - - create thread the os3 way and pass params - - - - - -
     p->m_MainProcessReplyPort = CreateMsgPort(); // factorise that.
 
@@ -546,9 +613,9 @@ void *amiga_audio_init(const char *device,
 	}
 	{
     	struct threadParamMsg tpm;
-
+#ifdef ARA_DEBUGTRACE
  printf("send init params\n");
-
+#endif
         tpm.msg.mn_ReplyPort = p->m_MainProcessReplyPort;
         tpm.msg.mn_Length    = sizeof(struct threadParamMsg);
         tpm.p = p;
@@ -556,13 +623,14 @@ void *amiga_audio_init(const char *device,
         PutMsg(&p->m_hThread->pr_MsgPort, &tpm.msg);
         WaitPort(tpm.msg.mn_ReplyPort);
 		(void) GetMsg(tpm.msg.mn_ReplyPort);
-
+#ifdef ARA_DEBUGTRACE
  printf("after send init params\n");
+#endif
     }
 
     return (void *)p;
 }
-int wrrounddone=0;
+
 /* note this is to be streamed by frame.
 if we were sure "len" is always same size as m_sampleUpdateLength
 it would be easy.
@@ -580,7 +648,6 @@ size_t amiga_audio_write(void *data, const void *s, size_t len)
     if(!p || !pread || len==0) return 0;
     if(!p->m_isplaying) return 0;
 
-wrrounddone=0;
     pFrame = &p->m_SampleFrames[p->m_iFrame_written & nbSampleFrameMask];
     while(len>0)
     {
@@ -616,12 +683,7 @@ wrrounddone=0;
             pFrame->_read = 0;
             pFrame->_writelock =0;
 
-            p->m_iFrame_written++;
-            while(p->m_SampleFrames[p->m_iFrame_written & nbSampleFrameMask]._readlock)
-            {
-                p->m_iFrame_written++;
-            }
-
+            p->m_iFrame_written++;           
             pFrame = &p->m_SampleFrames[p->m_iFrame_written & nbSampleFrameMask];
 
             pFrame->_writelock =1;
@@ -631,17 +693,18 @@ wrrounddone=0;
 
     } // end while len>0
 
-
+#ifdef ARA_DEBUGTRACE
 static int ifr=0;
 ifr++;
 if(ifr==50){
     ifr=0;
-    printf("nbmir:%d nbok:%d written:%d read:%d\n",nbmirror,nbok,p->m_iFrame_written,p->m_iFrame_read);
+    printf("nbmirrored:%d nbexact:%d nbjumps:%d\n",nbmirror,nbexact,nbfar);
     nbmirror=0;
-    nbok=0;
+    nbexact=0;
+    nbfar=0;
 
 }
-
+#endif
     return sdone;
 
 }
@@ -711,6 +774,8 @@ void amiga_audio_free(void *data)
     if(p->m_SampleFrames[0]._mix) FreeVec(p->m_SampleFrames[0]._mix);
 
     FreeVec(p);
+#ifdef ARA_DEBUGTRACE
     printf("final post delete, thread is dead, AHI is closed, memory is freed.\n");
+#endif
 }
 
