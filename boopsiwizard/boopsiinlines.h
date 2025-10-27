@@ -1,5 +1,5 @@
-#ifndef _REACTIONINLINES_H_
-#define _REACTIONINLINES_H_
+#ifndef _BOOPSIINLINES_H_
+#define _BOOPSIINLINES_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,7 +17,7 @@ extern "C" {
 #define AINLINE static inline
 #endif
 
-AINLINE struct Window *reaction_OpenWindow(Object *owin) {
+AINLINE struct Window *boopsi_OpenWindow(Object *owin) {
     return  (struct Window *)DoMethod(owin, WM_OPEN, NULL);
 }
 

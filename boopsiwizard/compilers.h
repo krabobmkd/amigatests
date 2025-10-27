@@ -15,7 +15,7 @@
     #define REG(reg,arg) register __##reg arg
     #define INLINE static __inline
 #elif defined(__GNUC__)
-    // works for amiga gcc 2.95 (1999) and bebbo gcc6.5.
+    // works for amiga gcc 2.95 (1999) and bebbo gcc6.5 (2024).
     //#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ > 0)
     #define ASM
     #define SAVEDS
