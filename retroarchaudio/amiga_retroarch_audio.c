@@ -562,7 +562,7 @@ void *amiga_audio_init(const char *device,
 
     return (void *)p;
 }
-int wrrounddone=0;
+
 /* note this is to be streamed by frame.
 if we were sure "len" is always same size as m_sampleUpdateLength
 it would be easy.
@@ -580,7 +580,6 @@ size_t amiga_audio_write(void *data, const void *s, size_t len)
     if(!p || !pread || len==0) return 0;
     if(!p->m_isplaying) return 0;
 
-wrrounddone=0;
     pFrame = &p->m_SampleFrames[p->m_iFrame_written & nbSampleFrameMask];
     while(len>0)
     {
@@ -632,15 +631,15 @@ wrrounddone=0;
     } // end while len>0
 
 
-static int ifr=0;
-ifr++;
-if(ifr==50){
-    ifr=0;
-    printf("nbmir:%d nbok:%d written:%d read:%d\n",nbmirror,nbok,p->m_iFrame_written,p->m_iFrame_read);
-    nbmirror=0;
-    nbok=0;
+// static int ifr=0;
+// ifr++;
+// if(ifr==50){
+//     ifr=0;
+//     printf("nbmir:%d nbok:%d written:%d read:%d\n",nbmirror,nbok,p->m_iFrame_written,p->m_iFrame_read);
+//     nbmirror=0;
+//     nbok=0;
 
-}
+// }
 
     return sdone;
 
