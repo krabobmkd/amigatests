@@ -340,7 +340,7 @@ int main(int argc, char **argv)
                         //IA_Font, &helvetica15bu,
                         //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
                         LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"Title",
+                        LABEL_Text,(ULONG)"Boopsi Wizard",
                     TAG_END);
 
 
@@ -349,6 +349,7 @@ int main(int argc, char **argv)
                     LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
                     LAYOUT_EvenSize, TRUE,
                     LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                    LAYOUT_BevelStyle, BVS_GROUP,
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
@@ -361,13 +362,42 @@ int main(int argc, char **argv)
 
     {
         {
-        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
-                        LABEL_DrawInfo, app->drawInfo,
-                        //IA_Font, &helvetica15bu,
-                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
-                        LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"List",
-                    TAG_END);
+        Object* label1 = NewObject( BUTTON_GetClass(),NULL,
+                                    GA_Text, "Gadget C Project",
+                                    GA_RelVerify, TRUE,
+                        // BUTTON_BevelStyle,BVS_NONE,
+                        // BUTTON_Transparent, TRUE,
+                                TAG_END);
+
+        // (Object *)NewObject( LABEL_GetClass(), NULL,
+        //                 LABEL_DrawInfo, app->drawInfo,
+        //                 //IA_Font, &helvetica15bu,
+        //                 //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+        //                 LABEL_Justification, LABEL_CENTRE,
+        //                 LABEL_Text,(ULONG)"List",
+        //             TAG_END);
+        Object* label2 = NewObject( BUTTON_GetClass(),NULL,
+                                    GA_Text, "Library C Project",
+                                    GA_RelVerify, TRUE,
+                        // BUTTON_BevelStyle,BVS_NONE,
+                        // BUTTON_Transparent, TRUE,
+                                TAG_END);
+        Object* label3 = NewObject( BUTTON_GetClass(),NULL,
+                                    GA_Text, "Datatype Image C Project",
+                                    GA_RelVerify, TRUE,
+                        // BUTTON_BevelStyle,BVS_NONE,
+                        // BUTTON_Transparent, TRUE,
+                                TAG_END);
+        Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
+                        //GA_DrawInfo,(ULONG) app->drawInfo,
+                        BUTTON_BevelStyle,BVS_NONE,
+                        BUTTON_Transparent, TRUE,
+						GA_ReadOnly, TRUE,
+                        BUTTON_Justification, BCJ_CENTER,
+
+                        GA_Text,(ULONG)" ",
+                        TAG_END);
+
         app->horizontallayoutBList =
              (Object *)NewObject( LAYOUT_GetClass(), NULL,
                     LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
@@ -376,7 +406,14 @@ int main(int argc, char **argv)
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
-                    LAYOUT_AddImage, label1,
+                    LAYOUT_AddChild, label1,
+                CHILD_WeightedHeight,0,
+                    LAYOUT_AddChild, label2,
+                CHILD_WeightedHeight,0,
+                    LAYOUT_AddChild, label3,
+                CHILD_WeightedHeight,0,
+                    LAYOUT_AddChild,ospacer,
+                CHILD_WeightedHeight,1,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
                   //  GA_Height,app->fontHeight,
@@ -397,6 +434,7 @@ int main(int argc, char **argv)
                     LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
                     LAYOUT_EvenSize, TRUE,
                     LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                    LAYOUT_BevelStyle, BVS_GROUP,
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
@@ -417,30 +455,44 @@ int main(int argc, char **argv)
                    // LAYOUT_SpaceInner, FALSE,
                    // LAYOUT_AddImage, label1,
                    LAYOUT_AddChild,  app->horizontallayoutBList,
+                CHILD_WeightedWidth,0,
                     LAYOUT_AddChild, app->horizontallayoutBForm,
+                CHILD_WeightedWidth,1,
                   //  GA_Height,app->fontHeight,
                     TAG_DONE);
     }
 
     {
-        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
-                        LABEL_DrawInfo, app->drawInfo,
-                        //IA_Font, &helvetica15bu,
-                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
-                        LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"Button zone",
-                    TAG_END);
+        Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
+                        //GA_DrawInfo,(ULONG) app->drawInfo,
+                        BUTTON_BevelStyle,BVS_NONE,
+                        BUTTON_Transparent, TRUE,
+						GA_ReadOnly, TRUE,
+                        BUTTON_Justification, BCJ_CENTER,
 
+                        GA_Text,(ULONG)" ",
+                        TAG_END);
+
+        Object* btGenerate = NewObject( BUTTON_GetClass(),NULL,
+                                    GA_Text, "Generate",
+                                    GA_RelVerify, TRUE,
+                        // BUTTON_BevelStyle,BVS_NONE,
+                        // BUTTON_Transparent, TRUE,
+                                TAG_END);
 
         app->horizontallayoutC =
              (Object *)NewObject( LAYOUT_GetClass(), NULL,
                     LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
                     LAYOUT_EvenSize, TRUE,
                     LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                    LAYOUT_BevelStyle, BVS_GROUP,
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
-                    LAYOUT_AddImage, label1,
+                   LAYOUT_AddChild, ospacer,
+                CHILD_WeightedWidth,1,
+                    LAYOUT_AddChild, btGenerate,
+                 CHILD_WeightedWidth,0,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
                   //  GA_Height,app->fontHeight,
@@ -483,12 +535,18 @@ int main(int argc, char **argv)
             GA_DrawInfo, app->drawInfo,
             LAYOUT_DeferLayout, TRUE, // Layout refreshes done on task's context (by thewindow class)
             LAYOUT_SpaceOuter, TRUE,
-            LAYOUT_BottomSpacing, 4,
+            LAYOUT_BottomSpacing, 2,
+            LAYOUT_TopSpacing,0,
+            LAYOUT_LeftSpacing,2,
+            LAYOUT_RightSpacing,2,
             LAYOUT_HorizAlignment, LALIGN_RIGHT,
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
             LAYOUT_AddChild, app->horizontallayoutA,
+                CHILD_WeightedHeight,1,
             LAYOUT_AddChild, app->horizontallayoutB,
+                CHILD_WeightedHeight,4,
             LAYOUT_AddChild, app->horizontallayoutC,
+                CHILD_WeightedHeight,1,
             LAYOUT_AddChild, app->bottombarlayout,
                 CHILD_WeightedHeight,0,
             TAG_END);
