@@ -110,15 +110,17 @@ struct App
         Object *horizontallayoutA;
             Object *titlelabel;
         Object *horizontallayoutB;
+        Object *horizontallayoutBList;
+        Object *horizontallayoutBForm;
             Object *templateList;
             // switch page
             Object *vertlayout_temp;
             // status bar
         Object *horizontallayoutC;
             Object *statusBarBtlabel;
-//        Object *bottombarlayout;
-//            Object *label1;
-//            Object *labelValues;
+        Object *bottombarlayout;
+            Object *label1;
+            Object *labelValues;
 //            Object *disablecheckbox;
 };
 // Boopsi class pointer to manage our private modelclass.
@@ -277,32 +279,178 @@ int main(int argc, char **argv)
     // let's size according to font height.
     app->fontHeight = 8+4; // default;
     if(app->drawInfo && app->drawInfo->dri_Font) app->fontHeight =app->drawInfo->dri_Font->tf_YSize + 4;
-/*
-    app->testbt = (Object *)NewObject( NULL, "button.gadget",
-                                    GA_DrawInfo, app->drawInfo,
-                              //      GA_TextAttr, &garnet16,
-                                    GA_ID,GAD_BUTTON_RECENTER,
-                                    GA_Text, "R_ecenter",
-                                    GA_RelVerify, TRUE, // needed
-                                TAG_END);
+
+//    app->testbt = (Object *)NewObject( NULL, "button.gadget",
+//                                    GA_DrawInfo, app->drawInfo,
+//                              //      GA_TextAttr, &garnet16,
+//                                    GA_ID,GAD_BUTTON_RECENTER,
+//                                    GA_Text, "R_ecenter",
+//                                    GA_RelVerify, TRUE, // needed
+//                                TAG_END);
 
 
-    if(!app->testbt) cleanexit("Can't button");
+//    if(!app->testbt) cleanexit("Can't button");
 
-    app->horizontallayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
-                LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
-                LAYOUT_EvenSize, TRUE,
-                LAYOUT_HorizAlignment, LALIGN_RIGHT,
-               // LAYOUT_SpaceInner, FALSE,
-                LAYOUT_AddChild, app->testbt,
-                LAYOUT_AddChild, app->kbdview,
-                TAG_DONE);
+//    app->horizontallayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
+//                LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
+//                LAYOUT_EvenSize, TRUE,
+//                LAYOUT_HorizAlignment, LALIGN_RIGHT,
+//               // LAYOUT_SpaceInner, FALSE,
+//                LAYOUT_AddChild, app->testbt,
+////                LAYOUT_AddChild, app->kbdview,
+//                TAG_DONE);
 
-    if(!app->horizontallayout) cleanexit("Can't layout 1");
+//    if(!app->horizontallayout) cleanexit("Can't layout 1");
 
 
 
- app->label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
+// app->label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
+//                        LABEL_DrawInfo, app->drawInfo,
+//                        //IA_Font, &helvetica15bu,
+//                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+//                        LABEL_Justification, LABEL_CENTRE,
+//                        LABEL_Text,(ULONG)"Values:",
+//                    TAG_END);
+
+// app->labelValues = (Object *)NewObject( NULL, "button.gadget",
+//                        GA_DrawInfo,(ULONG) app->drawInfo,
+//                        BUTTON_BevelStyle,BVS_NONE,
+//                        BUTTON_Transparent, TRUE,
+//                        BUTTON_Justification, BCJ_CENTER,
+//                        GA_Text,(ULONG)"...",
+//                    TAG_END);
+
+
+//    app->disablecheckbox = (Object *)NewObject( CHECKBOX_GetClass(), NULL,
+//                    GA_DrawInfo,(ULONG) app->drawInfo,
+//                    GA_Text,(ULONG)"Disable",
+//                 // tried auto attrib mapping with this, has terrible side effects.
+//                 //  ICA_TARGET,(ULONG)app->kbdview, // send the state change to this.
+//                 //  ICA_MAP,(ULONG)&attribToAttribMapping[0],
+//                 GA_ID,GAD_DISABLECHECKBOX,
+//                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+//                TAG_END);
+
+//    if(!app->disablecheckbox) cleanexit("Can't create checkbox");
+
+
+    {
+        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
+                        LABEL_DrawInfo, app->drawInfo,
+                        //IA_Font, &helvetica15bu,
+                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+                        LABEL_Justification, LABEL_CENTRE,
+                        LABEL_Text,(ULONG)"Title",
+                    TAG_END);
+
+
+        app->horizontallayoutA =
+             (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
+                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                  //  CHILD_ScaleHeight,1, //%
+                   // CHILD_MaxHeight,app->fontHeight,
+                   // LAYOUT_SpaceInner, FALSE,
+                    LAYOUT_AddImage, label1,
+                  //  LAYOUT_AddChild, app->labelValues,
+                   // LAYOUT_AddChild, app->disablecheckbox,
+                  //  GA_Height,app->fontHeight,
+                    TAG_DONE);
+    }
+
+    {
+        {
+        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
+                        LABEL_DrawInfo, app->drawInfo,
+                        //IA_Font, &helvetica15bu,
+                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+                        LABEL_Justification, LABEL_CENTRE,
+                        LABEL_Text,(ULONG)"List",
+                    TAG_END);
+        app->horizontallayoutBList =
+             (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
+                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                  //  CHILD_ScaleHeight,1, //%
+                   // CHILD_MaxHeight,app->fontHeight,
+                   // LAYOUT_SpaceInner, FALSE,
+                    LAYOUT_AddImage, label1,
+                  //  LAYOUT_AddChild, app->labelValues,
+                   // LAYOUT_AddChild, app->disablecheckbox,
+                  //  GA_Height,app->fontHeight,
+                    TAG_DONE);
+        }
+
+
+        {
+        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
+                        LABEL_DrawInfo, app->drawInfo,
+                        //IA_Font, &helvetica15bu,
+                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+                        LABEL_Justification, LABEL_CENTRE,
+                        LABEL_Text,(ULONG)"Form",
+                    TAG_END);
+        app->horizontallayoutBForm =
+             (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
+                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                  //  CHILD_ScaleHeight,1, //%
+                   // CHILD_MaxHeight,app->fontHeight,
+                   // LAYOUT_SpaceInner, FALSE,
+                    LAYOUT_AddImage, label1,
+                  //  LAYOUT_AddChild, app->labelValues,
+                   // LAYOUT_AddChild, app->disablecheckbox,
+                  //  GA_Height,app->fontHeight,
+                    TAG_DONE);
+        }
+
+        app->horizontallayoutB =
+             (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
+                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                  //  CHILD_ScaleHeight,1, //%
+                   // CHILD_MaxHeight,app->fontHeight,
+                   // LAYOUT_SpaceInner, FALSE,
+                   // LAYOUT_AddImage, label1,
+                   LAYOUT_AddChild,  app->horizontallayoutBList,
+                    LAYOUT_AddChild, app->horizontallayoutBForm,
+                  //  GA_Height,app->fontHeight,
+                    TAG_DONE);
+    }
+
+    {
+        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
+                        LABEL_DrawInfo, app->drawInfo,
+                        //IA_Font, &helvetica15bu,
+                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+                        LABEL_Justification, LABEL_CENTRE,
+                        LABEL_Text,(ULONG)"Button zone",
+                    TAG_END);
+
+
+        app->horizontallayoutC =
+             (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
+                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                  //  CHILD_ScaleHeight,1, //%
+                   // CHILD_MaxHeight,app->fontHeight,
+                   // LAYOUT_SpaceInner, FALSE,
+                    LAYOUT_AddImage, label1,
+                  //  LAYOUT_AddChild, app->labelValues,
+                   // LAYOUT_AddChild, app->disablecheckbox,
+                  //  GA_Height,app->fontHeight,
+                    TAG_DONE);
+    }
+
+
+
+    {
+        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
                         LABEL_DrawInfo, app->drawInfo,
                         //IA_Font, &helvetica15bu,
                         //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
@@ -310,42 +458,24 @@ int main(int argc, char **argv)
                         LABEL_Text,(ULONG)"Values:",
                     TAG_END);
 
- app->labelValues = (Object *)NewObject( NULL, "button.gadget",
-                        GA_DrawInfo,(ULONG) app->drawInfo,
-                        BUTTON_BevelStyle,BVS_NONE,
-                        BUTTON_Transparent, TRUE,
-                        BUTTON_Justification, BCJ_CENTER,
-                        GA_Text,(ULONG)"...",
-                    TAG_END);
+
+        app->bottombarlayout =
+             (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
+                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                  //  CHILD_ScaleHeight,1, //%
+                   // CHILD_MaxHeight,app->fontHeight,
+                   // LAYOUT_SpaceInner, FALSE,
+                    LAYOUT_AddImage, label1,
+                  //  LAYOUT_AddChild, app->labelValues,
+                   // LAYOUT_AddChild, app->disablecheckbox,
+                  //  GA_Height,app->fontHeight,
+                    TAG_DONE);
+        if(!app->bottombarlayout) cleanexit("Can't layout 2");
+    }
 
 
-    app->disablecheckbox = (Object *)NewObject( CHECKBOX_GetClass(), NULL,
-                    GA_DrawInfo,(ULONG) app->drawInfo,
-                    GA_Text,(ULONG)"Disable",
-                 // tried auto attrib mapping with this, has terrible side effects.
-                 //  ICA_TARGET,(ULONG)app->kbdview, // send the state change to this.
-                 //  ICA_MAP,(ULONG)&attribToAttribMapping[0],
-                 GA_ID,GAD_DISABLECHECKBOX,
-                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                TAG_END);
-
-    if(!app->disablecheckbox) cleanexit("Can't create checkbox");
-
-    app->bottombarlayout =
-         (Object *)NewObject( LAYOUT_GetClass(), NULL,
-                LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
-                LAYOUT_EvenSize, TRUE,
-                LAYOUT_HorizAlignment, LALIGN_RIGHT,
-              //  CHILD_ScaleHeight,1, //%
-               // CHILD_MaxHeight,app->fontHeight,
-               // LAYOUT_SpaceInner, FALSE,
-                LAYOUT_AddImage, app->label1,
-                LAYOUT_AddChild, app->labelValues,
-                LAYOUT_AddChild, app->disablecheckbox,
-              //  GA_Height,app->fontHeight,
-                TAG_DONE);
-
-    if(!app->bottombarlayout) cleanexit("Can't layout 2");
 
     {
      //   struct DrawInfo *drinfo = GetScreenDrawInfo(screen);
@@ -356,14 +486,30 @@ int main(int argc, char **argv)
             LAYOUT_BottomSpacing, 4,
             LAYOUT_HorizAlignment, LALIGN_RIGHT,
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
-            LAYOUT_AddChild, app->horizontallayout,
+            LAYOUT_AddChild, app->horizontallayoutA,
+            LAYOUT_AddChild, app->horizontallayoutB,
+            LAYOUT_AddChild, app->horizontallayoutC,
             LAYOUT_AddChild, app->bottombarlayout,
                 CHILD_WeightedHeight,0,
             TAG_END);
         if (!app->mainvlayout) cleanexit("layout error 3");
     } //end if screen
-
+/*
+    Object *mainvlayout;
+        Object *horizontallayoutA;
+            Object *titlelabel;
+        Object *horizontallayoutB;
+            Object *templateList;
+            // switch page
+            Object *vertlayout_temp;
+            // status bar
+        Object *horizontallayoutC;
+            Object *statusBarBtlabel;
+        Object *bottombarlayout;
+            Object *label1;
+            Object *labelValues;
 */
+
     app->app_port = CreateMsgPort();
 
     /* Create the window object. */
@@ -376,14 +522,14 @@ int main(int argc, char **argv)
         WA_Title,(ULONG) "Boopsi Wizard",
         WINDOW_ParentGroup,(ULONG) app->mainvlayout,
         WINDOW_IconifyGadget, TRUE,
-        WINDOW_Icon,(ULONG) GetDiskObject("PROGDIR:ReAction"),
+  //re      WINDOW_Icon,(ULONG) GetDiskObject("PROGDIR:ReAction"),
         WINDOW_IconTitle,(ULONG)  "Boopsi Wizard",
         WINDOW_AppPort, (ULONG)app->app_port,
     TAG_END);
     if(!app->window_obj) cleanexit("can't create window");
 
     /*  Open the window. */
-    app->win = reaction_OpenWindow(app->window_obj);
+    app->win = boopsi_OpenWindow(app->window_obj);
     if(!app->win) cleanexit("can't open window");
 
     {
@@ -497,7 +643,7 @@ int main(int argc, char **argv)
                         break;
 
                     case WMHI_UNICONIFY:
-                        app->win = reaction_OpenWindow(app->window_obj);
+                        app->win = boopsi_OpenWindow(app->window_obj);
                         if (!app->win) cleanexit("can't open window");
 
                         break;
