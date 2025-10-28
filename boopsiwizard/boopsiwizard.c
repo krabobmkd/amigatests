@@ -227,7 +227,7 @@ void closeAppModel(void)
 int main(int argc, char **argv)
 {
     atexit(&exitclose);
-
+    initTemplates();
  
     // - - - - open libraries...
 
@@ -510,11 +510,6 @@ int main(int argc, char **argv)
                    LAYOUT_AddChild, cbcmake,
                     TAG_DONE);
 
-
-
-
-
-
         Object* btGenerate = NewObject( BUTTON_GetClass(),NULL,
                                     GA_Text, "Generate",
                                     GA_RelVerify, TRUE,
@@ -535,10 +530,10 @@ int main(int argc, char **argv)
 //                CHILD_WeightedWidth,1,
 
                      LAYOUT_AddChild, targetcblayout,
-//                 CHILD_WeightedWidth,1,
+                 CHILD_WeightedWidth,3,
 
                     LAYOUT_AddChild, btGenerate,
-//                 CHILD_WeightedWidth,0,
+                 CHILD_WeightedWidth,0,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
                   //  GA_Height,app->fontHeight,
@@ -582,17 +577,17 @@ int main(int argc, char **argv)
             LAYOUT_DeferLayout, TRUE, // Layout refreshes done on task's context (by thewindow class)
             LAYOUT_SpaceOuter, TRUE,
             LAYOUT_BottomSpacing, 2,
-            LAYOUT_TopSpacing,0,
+            LAYOUT_TopSpacing,4,
             LAYOUT_LeftSpacing,2,
             LAYOUT_RightSpacing,2,
             LAYOUT_HorizAlignment, LALIGN_RIGHT,
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
             LAYOUT_AddChild, app->horizontallayoutA,
-                CHILD_WeightedHeight,1,
+                CHILD_WeightedHeight,0,
             LAYOUT_AddChild, app->horizontallayoutB,
                 CHILD_WeightedHeight,4,
             LAYOUT_AddChild, app->horizontallayoutC,
-                CHILD_WeightedHeight,1,
+                CHILD_WeightedHeight,0,
             LAYOUT_AddChild, app->bottombarlayout,
                 CHILD_WeightedHeight,0,
             TAG_END);

@@ -9,7 +9,10 @@ typedef struct _sWizTemplate
 } sWizTemplate;
 
 
-sWizTemplate **initTemplates();
+void initTemplates();
+int nbTemplates();
+sWizTemplate *getTemplates(int i);
+
 
 #endif
 
