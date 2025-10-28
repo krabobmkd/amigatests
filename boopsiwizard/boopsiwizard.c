@@ -40,6 +40,7 @@
 
 
 #include "boopsiinlines.h"
+#include "templates.h"
 
 
 typedef ULONG (*REHOOKFUNC)();
@@ -90,7 +91,10 @@ typedef union MsgUnion
  */
 #define GAD_BUTTON_RECENTER 1
 #define GAD_KEYBOARDVIEW_TOTEST 2
-#define GAD_DISABLECHECKBOX 3
+#define GAD_CB_SASC 3
+#define GAD_CB_MAKEFILE 4
+#define GAD_CB_CMAKELIST 5
+
 
 
 // all app related variables are here:
@@ -174,15 +178,16 @@ ULONG ASM SAVEDS AppModelDispatch(
 //                        TAG_END);
 //                }
                 retval = 1;
-            } else if(sender_ID == GAD_DISABLECHECKBOX)
-            {   // also works, but would be activated for all attribs sent:
+            }
+            //else if(sender_ID == GAD_CB DISABLECHECKBOX)
+            //{   // also works, but would be activated for all attribs sent:
                 //ULONG v;
                 //GetAttr(GA_SELECTED, app->disablecheckbox, &v);
 //                if((ptag = FindTagItem( GA_SELECTED,M->opUpdate.opu_AttrList ))!=NULL)
 //                {   // checkbox sent new Disable value.
 //                    SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,ptag->ti_Data,TAG_END);
 //                }
-            }
+//            }
             else // if ...other receive mamangement... else
             {
                 retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
@@ -463,15 +468,52 @@ int main(int argc, char **argv)
     }
 
     {
-        Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
-                        //GA_DrawInfo,(ULONG) app->drawInfo,
-                        BUTTON_BevelStyle,BVS_NONE,
-                        BUTTON_Transparent, TRUE,
-						GA_ReadOnly, TRUE,
-                        BUTTON_Justification, BCJ_CENTER,
+//        Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
+//                        //GA_DrawInfo,(ULONG) app->drawInfo,
+//                        BUTTON_BevelStyle,BVS_NONE,
+//                        BUTTON_Transparent, TRUE,
+//						GA_ReadOnly, TRUE,
+//                        BUTTON_Justification, BCJ_CENTER,
 
-                        GA_Text,(ULONG)" ",
-                        TAG_END);
+//                        GA_Text,(ULONG)" ",
+//                        TAG_END);
+
+                                Object* cbsasc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
+                                    GA_DrawInfo,(ULONG) app->drawInfo,
+                                    GA_Text,(ULONG)"SASC6.5 smakefile (1996,C90)",
+                                 GA_ID,GAD_CB_SASC,
+                                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                                TAG_END);
+
+
+                                Object* cbgcc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
+                                    GA_DrawInfo,(ULONG) app->drawInfo,
+                                    GA_Text,(ULONG)"GCC2.9x makefile (1999,C98)",
+                                 GA_ID,GAD_CB_MAKEFILE,
+                                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                                TAG_END);
+
+                                Object* cbcmake =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
+                                    GA_DrawInfo,(ULONG) app->drawInfo,
+                                    GA_Text,(ULONG)"GCC6.5 CMake (2011,C11)",
+                                 GA_ID,GAD_CB_CMAKELIST,
+                                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                                TAG_END);
+
+
+        Object *targetcblayout =     (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
+                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                   LAYOUT_AddChild, cbsasc,
+                   LAYOUT_AddChild, cbgcc,
+                   LAYOUT_AddChild, cbcmake,
+                    TAG_DONE);
+
+
+
+
+
 
         Object* btGenerate = NewObject( BUTTON_GetClass(),NULL,
                                     GA_Text, "Generate",
@@ -489,10 +531,14 @@ int main(int argc, char **argv)
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
-                   LAYOUT_AddChild, ospacer,
-                CHILD_WeightedWidth,1,
+//                   LAYOUT_AddChild, ospacer,
+//                CHILD_WeightedWidth,1,
+
+                     LAYOUT_AddChild, targetcblayout,
+//                 CHILD_WeightedWidth,1,
+
                     LAYOUT_AddChild, btGenerate,
-                 CHILD_WeightedWidth,0,
+//                 CHILD_WeightedWidth,0,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
                   //  GA_Height,app->fontHeight,

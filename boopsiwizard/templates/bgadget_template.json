@@ -1,0 +1,11 @@
+﻿{
+	"template" : {
+		"displayname" : "Boopsi Painted Gadget",
+		"zip" : "bpgadget.zip",
+		"keys" : [
+			{ "type":"defbool","displayname":"Manage sub-cliping","id":"%USESUBCLIPPING%","def":true},			
+			{}
+		]
+		
+	}
+}

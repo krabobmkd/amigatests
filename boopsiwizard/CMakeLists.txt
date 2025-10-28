@@ -11,13 +11,24 @@ set(COMMONLIBS "../../amigacommonlibs")
 
 set(ZLIBPATH "${COMMONLIBS}/zlib")
 add_subdirectory(${ZLIBPATH} zlib)
+set( AMIGACOMPOPTS -Os -save-temps -m68000   )
+
+add_library(cjson STATIC
+				cjson/cJSON.c
+				cjson/cJSON_Utils.c			
+				cjson/cJSON.h
+				cjson/cJSON_Utils.h
+			)
+target_compile_options(cjson PRIVATE ${AMIGACOMPOPTS} )
 
 # exe that consume the .class
 add_executable(BoopsiWizard
 		compilers.h
 		boopsiinlines.h
 		boopsiwizard.c
-		extracttemplate.c
+		templates.h
+		templates.c
+
 		${ZLIBPATH}/contrib/minizip/unzip.c
 		${ZLIBPATH}/contrib/minizip/unzip.h
 		${ZLIBPATH}/contrib/minizip/ioapi.c
@@ -25,10 +36,10 @@ add_executable(BoopsiWizard
 		)
 
 
-target_compile_options(BoopsiWizard PRIVATE -Os -save-temps -m68000 )
+target_compile_options(BoopsiWizard PRIVATE ${AMIGACOMPOPTS} )
 target_link_options(BoopsiWizard PRIVATE -s )
-target_include_directories(BoopsiWizard PUBLIC ${ZLIBPATH} )
-target_link_libraries(BoopsiWizard PUBLIC z )
+target_include_directories(BoopsiWizard PUBLIC ${ZLIBPATH} cjson )
+target_link_libraries(BoopsiWizard PUBLIC z cjson )
 # IOAPI_NO_64 is for minizip/ioapi.c
 # sources that doesn't support -O2 are moved to MameXAmigaO0 lib
 #target_compile_options(BoopsiWizard PRIVATE
