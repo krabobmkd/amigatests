@@ -14,62 +14,33 @@
 
 #include <dos/dos.h>
 
-//char* read_file(const char *filename);
-//char* read_file(const char *filename) {
-//    FILE *file = NULL;
-//    long length = 0;
-//    char *content = NULL;
-//    size_t read_chars = 0;
 
-//    /* open in read binary mode */
-//    file = fopen(filename, "rb");
-//    if (file == NULL)
-//    {
-//        goto cleanup;
-//    }
+static sWizTemplate *gFirstTemplate=NULL;
 
-//    /* get the length */
-//    if (fseek(file, 0, SEEK_END) != 0)
-//    {
-//        goto cleanup;
-//    }
-//    length = ftell(file);
-//    if (length < 0)
-//    {
-//        goto cleanup;
-//    }
-//    if (fseek(file, 0, SEEK_SET) != 0)
-//    {
-//        goto cleanup;
-//    }
+// copy json string to our struct, using AllocVec
+static inline void getJsString(char **p, cJSON *jsobj, const char *key )
+{
+    if(*p != NULL) {
+        FreeVec(*p);
+        *p = NULL;
+    }
+    if(!jsobj) return;
+    cJSON *pm = cJSON_GetObjectItem(jsobj,key);
+    if(!pm) return;
+    if( !cJSON_IsString(pm)) return;
 
-//    /* allocate content buffer */
-//    content = (char*)malloc((size_t)length + sizeof(""));
-//    if (content == NULL)
-//    {
-//        goto cleanup;
-//    }
+    const char *ps = cJSON_GetStringValue(pm);
+    if(!ps) return;
 
-//    /* read the file into memory */
-//    read_chars = fread(content, sizeof(char), (size_t)length, file);
-//    if ((long)read_chars != length)
-//    {
-//        free(content);
-//        content = NULL;
-//        goto cleanup;
-//    }
-//    content[read_chars] = '\0';
+    int l = strlen(ps);
+    *p = AllocVec(l+1,0);
+    if(!(*p)) return;
+    strcpy(*p,ps);
+    (*p)[l]=0;
+}
 
 
-//cleanup:
-//    if (file != NULL)
-//    {
-//        fclose(file);
-//    }
-
-//    return content;
-//}
-static int scanTemplates(BPTR lock, FileInfoBlock*fib)
+static int scanTemplates(BPTR lock, struct FileInfoBlock*fib)
 {
     char temp[256];
     temp[0] = 0;
@@ -111,16 +82,42 @@ by default but can be changed (globally) with cJSON_InitHooks.
                         Close(fh);
                     }
                     cJSON *jsroot = cJSON_Parse(pmem); //cJSON_CreateObject();
-                     // if (monitor_json == NULL)
-                     //    {
-                     //        const char *error_ptr = cJSON_GetErrorPtr();
-                     //        if (error_ptr != NULL)
-                     //        {
-                     //            fprintf(stderr, "Error before: %s\n", error_ptr);
-                     //        }
-                     //        status = 0;
-                     //        goto end;
-                     //    }
+                    if (jsroot == NULL)
+                    {
+                        const char *error_ptr = cJSON_GetErrorPtr();
+                        if (error_ptr != NULL)
+                        {
+                            printf("error file: %s\n",fib->fib_FileName);
+                            printf("template json error before: %s\n", error_ptr);
+                        }
+                        FreeVec(pmem);
+                        continue;
+                    }
+                    cJSON *jstemplate = cJSON_GetObjectItemCaseSensitive(jsroot, "template");
+                    if(jstemplate)
+                    {
+                        sWizTemplate *ntmpl = AllocVec(sizeof(sWizTemplate),MEMF_CLEAR);
+                        if(ntmpl)
+                        {
+                            ntmpl->_pNext = gFirstTemplate;
+                            gFirstTemplate = ntmpl;
+
+                            getJsString(&(ntmpl->_displayName),jstemplate,"displayname");
+                            getJsString(&(ntmpl->_versionstring),jstemplate,"versionstr");
+                            getJsString(&(ntmpl->_archivename),jstemplate,"archive");
+                            getJsString(&(ntmpl->_defaultname),jstemplate,"defaultname");
+                            getJsString(&(ntmpl->_comment),jstemplate,"comment");
+
+        if(ntmpl->_comment) printf(ntmpl->_comment);
+
+                        }
+                    } else
+                    {
+                        FreeVec(pmem);
+                        printf("error file: %s\n",fib->fib_FileName);
+                        printf("json syntax ok but no template chapter.\n");
+                         continue;
+                    }
 
 
 
@@ -143,11 +140,10 @@ by default but can be changed (globally) with cJSON_InitHooks.
     //     }
     // }
 
-                    if(jsroot)
-                    {
-                        printf("parse ok\n");
-                        cJSON_Delete(jsroot);
-                    }
+
+                    printf("parse ok\n");
+                    cJSON_Delete(jsroot);
+
 
                     FreeVec(pmem);
                 }
@@ -161,8 +157,30 @@ by default but can be changed (globally) with cJSON_InitHooks.
     return nb;
 }
 
+static void closeTemplates()
+{
+ printf("closeTemplates\n");
+    sWizTemplate *pt = gFirstTemplate;
+    while(pt)
+    {
+        sWizTemplate *ptnext = pt->_pNext;
+        if(pt->_displayName) FreeVec(pt->_displayName);
+        if(pt->_versionstring) FreeVec(pt->_versionstring);
+        if(pt->_archivename) FreeVec(pt->_archivename);
+        if(pt->_defaultname) FreeVec(pt->_defaultname);
+        if(pt->_comment) FreeVec(pt->_comment);
+
+        FreeVec(pt);
+        pt = ptnext;
+ printf("woot\n");
+    }
+ printf("end\n");
+}
+
 void initTemplates()
 {
+    atexit(&closeTemplates);
+
     struct FileInfoBlock *fib;
     fib = (struct FileInfoBlock *)AllocDosObject(DOS_FIB, NULL);
     if(!fib) return 0;
@@ -171,7 +189,7 @@ void initTemplates()
     BPTR lock = Lock( "PROGDIR:templates" , ACCESS_READ);
     if(lock)
     {
-        scanTemplates(temp, lock,fib);
+        scanTemplates(lock,fib);
         UnLock(lock);
     }
 

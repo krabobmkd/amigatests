@@ -1,9 +1,13 @@
 ﻿{
 	"template" : {
-		"displayname" : "Boopsi Painted Gadget",
-		"zip" : "bpgadget.zip",
+		"displayname" : "Painted Gadget",
+		"versionstr" : "0.1",
+		"archive" : "bpgadget.zip",
+		"defaultname" : "PaintGadget",
+		"comment" :
+"Prepare a BOOPSI Gadget class that draws circles, reacts to clicks, send update events, and can be modifed by changing attribs.\nThe same code will compile an external .class binary that can be shared by intuition (with AddClass()), with a separated test executable using it,\nbut also a single test executable that links statically the same test and the same class, keeping it private.",
 		"keys" : [
-			{ "type":"defbool","displayname":"Manage sub-cliping","id":"%USESUBCLIPPING%","def":true},			
+			{ "type":"defbool","displayname":"layers.lib sub-cliping","id":"%USESUBCLIPPING%","def":true},
 			{}
 		]
 		

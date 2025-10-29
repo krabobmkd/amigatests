@@ -11,13 +11,14 @@ set(COMMONLIBS "../../amigacommonlibs")
 
 set(ZLIBPATH "${COMMONLIBS}/zlib")
 add_subdirectory(${ZLIBPATH} zlib)
-set( AMIGACOMPOPTS -Os -save-temps -m68000   )
+# let's have 68000 and soft float using libs/ieeemath libs !
+# let's go "no float at all" with modified json lib....
+# set( AMIGACOMPOPTS -Os -save-temps -m68000 -msoft-float  )
+set( AMIGACOMPOPTS -Os -save-temps -m68000 )
 
 add_library(cjson STATIC
 				cjson/cJSON.c
-				cjson/cJSON_Utils.c			
 				cjson/cJSON.h
-				cjson/cJSON_Utils.h
 			)
 target_compile_options(cjson PRIVATE ${AMIGACOMPOPTS} )
 
@@ -39,7 +40,7 @@ add_executable(BoopsiWizard
 target_compile_options(BoopsiWizard PRIVATE ${AMIGACOMPOPTS} )
 target_link_options(BoopsiWizard PRIVATE -s )
 target_include_directories(BoopsiWizard PUBLIC ${ZLIBPATH} cjson )
-target_link_libraries(BoopsiWizard PUBLIC z cjson )
+target_link_libraries(BoopsiWizard PUBLIC z cjson  )
 # IOAPI_NO_64 is for minizip/ioapi.c
 # sources that doesn't support -O2 are moved to MameXAmigaO0 lib
 #target_compile_options(BoopsiWizard PRIVATE
