@@ -40,7 +40,7 @@ typedef struct _sWizTemplate
 
 
 void initTemplates();
-sWizTemplate *getTemplates(int i);
+sWizTemplate *getTemplates();
 
 
 #endif

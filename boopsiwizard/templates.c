@@ -202,9 +202,9 @@ int nbTemplates()
     return 0;
 
 }
-sWizTemplate *getTemplates(int i)
+sWizTemplate *getTemplates()
 {
-    return NULL;
+    return gFirstTemplate;
 }
 
 

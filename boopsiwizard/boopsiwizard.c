@@ -367,33 +367,42 @@ int main(int argc, char **argv)
 
     {
         {
-        Object* label1 = NewObject( BUTTON_GetClass(),NULL,
-                                    GA_Text, "Gadget C Project",
+            int nbtemplates = 0;
+            sWizTemplate *pt = getTemplates();
+            while(pt) { nbtemplates++; pt = pt->_pNext; }
+
+
+            static const ULONG const listtagsstart[]={
+                        LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
+                        LAYOUT_EvenSize, TRUE,
+                        LAYOUT_HorizAlignment, LALIGN_RIGHT
+                        };
+
+            int nbstartpairs=3;
+            ULONG *plisttags = AllocVec(sizeof(listtagsstart)+(sizeof(ULONG)*(4*nbtemplates+3)),0);
+            memcpy(plisttags,listtagsstart,sizeof(listtagsstart));
+            ULONG *plisttagsr =  plisttags + (sizeof(listtagsstart)/sizeof(ULONG)) ;
+
+            pt = getTemplates();
+            while(pt) {
+                const char *pdisplayname = (pt->_displayName)?pt->_displayName:"?";
+                Object* label1 = NewObject( BUTTON_GetClass(),NULL,
+                                    GA_Text,(ULONG)pdisplayname,
                                     GA_RelVerify, TRUE,
+                                    BUTTON_PushButton, TRUE,
                         // BUTTON_BevelStyle,BVS_NONE,
                         // BUTTON_Transparent, TRUE,
                                 TAG_END);
 
-        // (Object *)NewObject( LABEL_GetClass(), NULL,
-        //                 LABEL_DrawInfo, app->drawInfo,
-        //                 //IA_Font, &helvetica15bu,
-        //                 //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
-        //                 LABEL_Justification, LABEL_CENTRE,
-        //                 LABEL_Text,(ULONG)"List",
-        //             TAG_END);
-        Object* label2 = NewObject( BUTTON_GetClass(),NULL,
-                                    GA_Text, "Library C Project",
-                                    GA_RelVerify, TRUE,
-                        // BUTTON_BevelStyle,BVS_NONE,
-                        // BUTTON_Transparent, TRUE,
-                                TAG_END);
-        Object* label3 = NewObject( BUTTON_GetClass(),NULL,
-                                    GA_Text, "Datatype Image C Project",
-                                    GA_RelVerify, TRUE,
-                        // BUTTON_BevelStyle,BVS_NONE,
-                        // BUTTON_Transparent, TRUE,
-                                TAG_END);
-        Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
+                *plisttagsr++ = LAYOUT_AddChild;
+                *plisttagsr++ = (ULONG)label1;
+                *plisttagsr++ = CHILD_WeightedHeight;
+                *plisttagsr++ = 0;
+//                CHILD_WeightedHeight,0,
+                pt = pt->_pNext;
+            }
+
+            Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
                         //GA_DrawInfo,(ULONG) app->drawInfo,
                         BUTTON_BevelStyle,BVS_NONE,
                         BUTTON_Transparent, TRUE,
@@ -403,26 +412,63 @@ int main(int argc, char **argv)
                         GA_Text,(ULONG)" ",
                         TAG_END);
 
-        app->horizontallayoutBList =
-             (Object *)NewObject( LAYOUT_GetClass(), NULL,
-                    LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
-                    LAYOUT_EvenSize, TRUE,
-                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
-                  //  CHILD_ScaleHeight,1, //%
-                   // CHILD_MaxHeight,app->fontHeight,
-                   // LAYOUT_SpaceInner, FALSE,
-                    LAYOUT_AddChild, label1,
-                CHILD_WeightedHeight,0,
-                    LAYOUT_AddChild, label2,
-                CHILD_WeightedHeight,0,
-                    LAYOUT_AddChild, label3,
-                CHILD_WeightedHeight,0,
-                    LAYOUT_AddChild,ospacer,
-                CHILD_WeightedHeight,1,
-                  //  LAYOUT_AddChild, app->labelValues,
-                   // LAYOUT_AddChild, app->disablecheckbox,
-                  //  GA_Height,app->fontHeight,
-                    TAG_DONE);
+
+            *plisttagsr++ = LAYOUT_AddChild;
+            *plisttagsr++ = (ULONG)ospacer;
+            *plisttagsr++ = TAG_END;
+
+//        Object* label1 = NewObject( BUTTON_GetClass(),NULL,
+//                                    GA_Text, "Gadget C Projec",
+//                                    GA_RelVerify, TRUE,
+//                                    BUTTON_PushButton, TRUE,
+//                        // BUTTON_BevelStyle,BVS_NONE,
+//                        // BUTTON_Transparent, TRUE,
+//                                TAG_END);
+
+        // (Object *)NewObject( LABEL_GetClass(), NULL,
+        //                 LABEL_DrawInfo, app->drawInfo,
+        //                 //IA_Font, &helvetica15bu,
+        //                 //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+        //                 LABEL_Justification, LABEL_CENTRE,
+        //                 LABEL_Text,(ULONG)"List",
+        //             TAG_END);
+//        Object* label2 = NewObject( BUTTON_GetClass(),NULL,
+//                                    GA_Text, "Library C Project",
+//                                    GA_RelVerify, TRUE,
+//                        // BUTTON_BevelStyle,BVS_NONE,
+//                        // BUTTON_Transparent, TRUE,
+//                                TAG_END);
+//        Object* label3 = NewObject( BUTTON_GetClass(),NULL,
+//                                    GA_Text, "Datatype Image C Project",
+//                                    GA_RelVerify, TRUE,
+//                        // BUTTON_BevelStyle,BVS_NONE,
+//                        // BUTTON_Transparent, TRUE,
+//                                TAG_END);
+
+           app->horizontallayoutBList =
+                (Object *)NewObjectA( LAYOUT_GetClass(), NULL,plisttags);
+           FreeVec(plisttags);
+
+//        app->horizontallayoutBList =
+//             (Object *)NewObject( LAYOUT_GetClass(), NULL,
+//                    LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
+//                    LAYOUT_EvenSize, TRUE,
+//                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+//                  //  CHILD_ScaleHeight,1, //%
+//                   // CHILD_MaxHeight,app->fontHeight,
+//                   // LAYOUT_SpaceInner, FALSE,
+//                    LAYOUT_AddChild, label1,
+//                CHILD_WeightedHeight,0,
+//                    LAYOUT_AddChild, label2,
+//                CHILD_WeightedHeight,0,
+//                    LAYOUT_AddChild, label3,
+//                CHILD_WeightedHeight,0,
+//                    LAYOUT_AddChild,ospacer,
+//                CHILD_WeightedHeight,1,
+//                  //  LAYOUT_AddChild, app->labelValues,
+//                   // LAYOUT_AddChild, app->disablecheckbox,
+//                  //  GA_Height,app->fontHeight,
+//                    TAG_DONE);
         }
 
 
