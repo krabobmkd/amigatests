@@ -16,6 +16,7 @@
 
 
 static sWizTemplate *gFirstTemplate=NULL;
+static template_notifier gNotifier=NULL;
 
 // copy json string to our struct, using AllocVec
 static inline void getJsString(char **p, cJSON *jsobj, const char *key )
@@ -44,13 +45,14 @@ static int scanTemplates(BPTR lock, struct FileInfoBlock*fib)
 {
     char temp[256];
     temp[0] = 0;
-    int nb = 0;
+    int nbTemplates = 0;
     if(!Examine(lock, fib)) return 0;
 /*
 The allocator used by cJSON_Parse is malloc and free
 by default but can be changed (globally) with cJSON_InitHooks.
 */
     if(fib->fib_DirEntryType <= 0) return 0; // if >0, a directory
+
 
     while(ExNext(lock, fib))
     {
@@ -108,7 +110,8 @@ by default but can be changed (globally) with cJSON_InitHooks.
                             getJsString(&(ntmpl->_defaultname),jstemplate,"defaultname");
                             getJsString(&(ntmpl->_comment),jstemplate,"comment");
 
-        if(ntmpl->_comment) printf(ntmpl->_comment);
+                            //if(ntmpl->_comment) printf(ntmpl->_comment);
+                            nbTemplates++;
 
                         }
                     } else
@@ -147,14 +150,18 @@ by default but can be changed (globally) with cJSON_InitHooks.
 
                     FreeVec(pmem);
                 }
-
-
-                nb++;
             }
         } // end if is file.
 
     } // end loop per dir file
-    return nb;
+
+    if(gNotifier) {
+        char temp[128];
+        snprintf(temp,127,"Found %d templates",nbTemplates);
+        gNotifier(0,temp);
+    }
+
+    return nbTemplates;
 }
 
 static void closeTemplates()
@@ -177,8 +184,10 @@ static void closeTemplates()
  printf("end\n");
 }
 
-void initTemplates()
+void initTemplates(template_notifier n)
 {
+    gNotifier = n;
+
     atexit(&closeTemplates);
 
     struct FileInfoBlock *fib;

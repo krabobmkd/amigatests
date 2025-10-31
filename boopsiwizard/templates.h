@@ -39,8 +39,12 @@ typedef struct _sWizTemplate
 } sWizTemplate;
 
 
-void initTemplates();
+typedef void (*template_notifier)(int ilog,const char *log);
+
+void initTemplates(template_notifier n);
 sWizTemplate *getTemplates();
+
+
 
 
 #endif

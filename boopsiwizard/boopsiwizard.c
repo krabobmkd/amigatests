@@ -71,6 +71,7 @@ void cleanexit(const char *pmessage)
     exit(0);
 }
 void exitclose(void);
+static void guiNotifier(int loglevel, const char *log);
 
 // usefull union for dispatchers. Each structs also starts with MethodID.
 typedef union MsgUnion
@@ -123,8 +124,8 @@ struct App
         Object *horizontallayoutC;
             Object *statusBarBtlabel;
         Object *bottombarlayout;
-            Object *label1;
-            Object *labelValues;
+            Object* statusbarlabel;
+
 //            Object *disablecheckbox;
 };
 // Boopsi class pointer to manage our private modelclass.
@@ -227,7 +228,7 @@ void closeAppModel(void)
 int main(int argc, char **argv)
 {
     atexit(&exitclose);
-    initTemplates();
+    initTemplates(&guiNotifier);
  
     // - - - - open libraries...
 
@@ -589,13 +590,22 @@ int main(int argc, char **argv)
 
 
     {
-        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
-                        LABEL_DrawInfo, app->drawInfo,
-                        //IA_Font, &helvetica15bu,
-                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
-                        LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"Values:",
+        app->statusbarlabel = (Object *)NewObject( BUTTON_GetClass(),NULL,
+                        GA_DrawInfo,(ULONG) app->drawInfo,
+                        BUTTON_BevelStyle,BVS_NONE,
+                        BUTTON_Transparent, TRUE,
+						GA_ReadOnly, TRUE,
+                        BUTTON_Justification, BCJ_CENTER,
+                        GA_Text,(ULONG)"...",
                     TAG_END);
+
+//         (Object *)NewObject( LABEL_GetClass(), NULL,
+//                        LABEL_DrawInfo, app->drawInfo,
+//                        //IA_Font, &helvetica15bu,
+//                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+//                        LABEL_Justification, LABEL_CENTRE,
+//                        LABEL_Text,(ULONG)"Values:",
+//                    TAG_END);
 
 
         app->bottombarlayout =
@@ -606,7 +616,7 @@ int main(int argc, char **argv)
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
-                    LAYOUT_AddImage, label1,
+                    LAYOUT_AddImage, app->statusbarlabel,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
                   //  GA_Height,app->fontHeight,
@@ -806,6 +816,23 @@ int main(int argc, char **argv)
     return 0;
 }
 
+static void guiNotifier(int loglevel, const char *log)
+{
+    if(!app || !app->statusbarlabel) return;
+
+//    SetGadgetAttrs((struct Gadget *)app->statusbarlabel,app->win,NULL,
+//        GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
+//       // BUTTON_VarArgs,(ULONG) &centerXY[0],
+//        TAG_END);
+    int textpen = -1; // default text pen
+
+
+    SetGadgetAttrs((struct Gadget *)app->statusbarlabel,app->win,NULL,
+        BUTTON_TextPen,(ULONG)textpen,
+        GA_Text,(ULONG)log, // in amiga API %d is for short and %ld for longs.
+        TAG_END);
+
+}
 
 void exitclose(void)
 {
