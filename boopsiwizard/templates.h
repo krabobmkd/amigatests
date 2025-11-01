@@ -42,8 +42,9 @@ typedef struct _sWizTemplate
 typedef void (*template_notifier)(int ilog,const char *log);
 
 void initTemplates(template_notifier n);
-sWizTemplate *getTemplates();
 
+sWizTemplate *getTemplates();
+int getNbTemplates();
 
 
 

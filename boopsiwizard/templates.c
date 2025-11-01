@@ -16,7 +16,8 @@
 
 
 static sWizTemplate *gFirstTemplate=NULL;
-static template_notifier gNotifier=NULL;
+static int nbTemplates = 0;
+int getNbTemplates(){ return nbTemplates;  }
 
 // copy json string to our struct, using AllocVec
 static inline void getJsString(char **p, cJSON *jsobj, const char *key )
@@ -45,7 +46,7 @@ static int scanTemplates(BPTR lock, struct FileInfoBlock*fib)
 {
     char temp[256];
     temp[0] = 0;
-    int nbTemplates = 0;
+    nbTemplates = 0;
     if(!Examine(lock, fib)) return 0;
 /*
 The allocator used by cJSON_Parse is malloc and free
@@ -101,6 +102,8 @@ by default but can be changed (globally) with cJSON_InitHooks.
                         sWizTemplate *ntmpl = AllocVec(sizeof(sWizTemplate),MEMF_CLEAR);
                         if(ntmpl)
                         {
+                    printf("+1 tmpl\n");
+
                             ntmpl->_pNext = gFirstTemplate;
                             gFirstTemplate = ntmpl;
 
@@ -146,20 +149,17 @@ by default but can be changed (globally) with cJSON_InitHooks.
 
                     printf("parse ok\n");
                     cJSON_Delete(jsroot);
-
+                    printf("parseafter delete\n");
 
                     FreeVec(pmem);
+                    printf("after freemem\n");
                 }
             }
         } // end if is file.
 
     } // end loop per dir file
 
-    if(gNotifier) {
-        char temp[128];
-        snprintf(temp,127,"Found %d templates",nbTemplates);
-        gNotifier(0,temp);
-    }
+
 
     return nbTemplates;
 }
@@ -186,13 +186,12 @@ static void closeTemplates()
 
 void initTemplates(template_notifier n)
 {
-    gNotifier = n;
 
     atexit(&closeTemplates);
 
     struct FileInfoBlock *fib;
     fib = (struct FileInfoBlock *)AllocDosObject(DOS_FIB, NULL);
-    if(!fib) return 0;
+    if(!fib) return;
 
 
     BPTR lock = Lock( "PROGDIR:templates" , ACCESS_READ);
@@ -206,11 +205,7 @@ void initTemplates(template_notifier n)
 
 
 }
-int nbTemplates()
-{
-    return 0;
 
-}
 sWizTemplate *getTemplates()
 {
     return gFirstTemplate;

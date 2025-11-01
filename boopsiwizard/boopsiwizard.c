@@ -71,7 +71,8 @@ void cleanexit(const char *pmessage)
     exit(0);
 }
 void exitclose(void);
-static void guiNotifier(int loglevel, const char *log);
+
+void guiNotifier(int loglevel, const char *log);
 
 // usefull union for dispatchers. Each structs also starts with MethodID.
 typedef union MsgUnion
@@ -229,7 +230,7 @@ int main(int argc, char **argv)
 {
     atexit(&exitclose);
     initTemplates(&guiNotifier);
- 
+
     // - - - - open libraries...
 
     if ( ! (IntuitionBase = (struct IntuitionBase*)OpenLibrary("intuition.library",33)))
@@ -368,10 +369,8 @@ int main(int argc, char **argv)
 
     {
         {
-            int nbtemplates = 0;
-            sWizTemplate *pt = getTemplates();
-            while(pt) { nbtemplates++; pt = pt->_pNext; }
-
+            int nbtemplates = getNbTemplates();
+            sWizTemplate *pt;
 
             static const ULONG const listtagsstart[]={
                         LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
@@ -528,6 +527,7 @@ int main(int argc, char **argv)
                                 Object* cbsasc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
                                     GA_DrawInfo,(ULONG) app->drawInfo,
                                     GA_Text,(ULONG)"SASC6.5 smakefile (1996,C90)",
+                                    CHECKBOX_Checked,TRUE,
                                  GA_ID,GAD_CB_SASC,
                                  ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
                                 TAG_END);
@@ -536,6 +536,7 @@ int main(int argc, char **argv)
                                 Object* cbgcc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
                                     GA_DrawInfo,(ULONG) app->drawInfo,
                                     GA_Text,(ULONG)"GCC2.9x makefile (1999,C98)",
+                                    CHECKBOX_Checked,TRUE,
                                  GA_ID,GAD_CB_MAKEFILE,
                                  ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
                                 TAG_END);
@@ -543,6 +544,7 @@ int main(int argc, char **argv)
                                 Object* cbcmake =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
                                     GA_DrawInfo,(ULONG) app->drawInfo,
                                     GA_Text,(ULONG)"GCC6.5 CMake (2011,C11)",
+                                    CHECKBOX_Checked,TRUE,
                                  GA_ID,GAD_CB_CMAKELIST,
                                  ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
                                 TAG_END);
@@ -616,7 +618,7 @@ int main(int argc, char **argv)
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
-                    LAYOUT_AddImage, app->statusbarlabel,
+                    LAYOUT_AddChild, app->statusbarlabel,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
                   //  GA_Height,app->fontHeight,
@@ -686,6 +688,16 @@ int main(int argc, char **argv)
     /*  Open the window. */
     app->win = boopsi_OpenWindow(app->window_obj);
     if(!app->win) cleanexit("can't open window");
+
+
+// gui not inited here.
+    {
+        char temp[64];
+            printf("go notif\n");
+        snprintf(temp,63,"Found %d templates", getNbTemplates());
+        guiNotifier(0,temp);
+    }
+
 
     {
         ULONG signal;
@@ -816,7 +828,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-static void guiNotifier(int loglevel, const char *log)
+void guiNotifier(int loglevel, const char *log)
 {
     if(!app || !app->statusbarlabel) return;
 
@@ -824,13 +836,14 @@ static void guiNotifier(int loglevel, const char *log)
 //        GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
 //       // BUTTON_VarArgs,(ULONG) &centerXY[0],
 //        TAG_END);
-    int textpen = -1; // default text pen
+//re    int textpen = -1; // default text pen
 
-
+ printf("SetGadgetAttrs:%s\n",log);
     SetGadgetAttrs((struct Gadget *)app->statusbarlabel,app->win,NULL,
-        BUTTON_TextPen,(ULONG)textpen,
-        GA_Text,(ULONG)log, // in amiga API %d is for short and %ld for longs.
+    //    BUTTON_TextPen,(ULONG)textpen,
+        GA_Text,(ULONG)log,
         TAG_END);
+ printf("done\n");
 
 }
 
