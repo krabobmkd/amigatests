@@ -44,8 +44,7 @@ static inline void getJsString(char **p, cJSON *jsobj, const char *key )
 
 static int scanTemplates(BPTR lock, struct FileInfoBlock*fib)
 {
-    char temp[256];
-    temp[0] = 0;
+
     nbTemplates = 0;
     if(!Examine(lock, fib)) return 0;
 /*
@@ -72,12 +71,14 @@ by default but can be changed (globally) with cJSON_InitHooks.
                 char *pmem = AllocVec(fib->fib_Size+1,0);
                 if( pmem )
                 {
+                    char temp[256];
+                    temp[0] = 0;
                     strcat(temp,"PROGDIR:templates/");
                     strcat(temp,fib->fib_FileName);
                     //printf("filesize:%d\n",fib->fib_Size);
                     BPTR fh = Open(temp,MODE_OLDFILE);
 
- printf("open:%s\n",temp);
+// printf("open:%s\n",temp);
                     if(fh)
                     {
                         Read(fh,pmem,fib->fib_Size);
@@ -102,7 +103,7 @@ by default but can be changed (globally) with cJSON_InitHooks.
                         sWizTemplate *ntmpl = AllocVec(sizeof(sWizTemplate),MEMF_CLEAR);
                         if(ntmpl)
                         {
-                    printf("+1 tmpl\n");
+                    //printf("+1 tmpl\n");
 
                             ntmpl->_pNext = gFirstTemplate;
                             gFirstTemplate = ntmpl;
@@ -124,35 +125,9 @@ by default but can be changed (globally) with cJSON_InitHooks.
                         printf("json syntax ok but no template chapter.\n");
                          continue;
                     }
-
-
-
-    // resolutions = cJSON_GetObjectItemCaseSensitive(monitor_json, "resolutions");
-    // cJSON_ArrayForEach(resolution, resolutions)
-    // {
-    //     cJSON *width = cJSON_GetObjectItemCaseSensitive(resolution, "width");
-    //     cJSON *height = cJSON_GetObjectItemCaseSensitive(resolution, "height");
-
-    //     if (!cJSON_IsNumber(width) || !cJSON_IsNumber(height))
-    //     {
-    //         status = 0;
-    //         goto end;
-    //     }
-
-    //     if ((width->valuedouble == 1920) && (height->valuedouble == 1080))
-    //     {
-    //         status = 1;
-    //         goto end;
-    //     }
-    // }
-
-
-                    printf("parse ok\n");
                     cJSON_Delete(jsroot);
-                    printf("parseafter delete\n");
-
                     FreeVec(pmem);
-                    printf("after freemem\n");
+
                 }
             }
         } // end if is file.
@@ -166,7 +141,6 @@ by default but can be changed (globally) with cJSON_InitHooks.
 
 static void closeTemplates()
 {
- printf("closeTemplates\n");
     sWizTemplate *pt = gFirstTemplate;
     while(pt)
     {
@@ -179,9 +153,7 @@ static void closeTemplates()
 
         FreeVec(pt);
         pt = ptnext;
- printf("woot\n");
     }
- printf("end\n");
 }
 
 void initTemplates(template_notifier n)
@@ -212,11 +184,6 @@ sWizTemplate *getTemplates()
 }
 
 
-int extractTemplate(const char *templateArchive,
-                     const char *baseName)
-{
-
-}
 /*
  *    cJSON *root = NULL;
     cJSON *fmt = NULL;

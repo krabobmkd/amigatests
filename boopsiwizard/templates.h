@@ -1,11 +1,9 @@
 #ifndef WIZTEMPLATES_H_
 #define WIZTEMPLATES_H_
 
-
 /**
-    The softwatre part of the wizard.
-
-    (no interface code here, interface should just just use.)
+    The software part of the wizard
+    (no interface code here, interface should just use it.)
 
 */
 typedef struct _sWTmpl_pref
@@ -22,7 +20,6 @@ typedef struct _sWTmpl_pref_bool
 
 } sWTmpl_pref_bool;
 
-//  "type":"defbool","displayname":"Manage sub-cliping","id":"%USESUBCLIPPING%","def":true},
 
 /** one instance per known template, described in json */
 typedef struct _sWizTemplate
@@ -46,7 +43,15 @@ void initTemplates(template_notifier n);
 sWizTemplate *getTemplates();
 int getNbTemplates();
 
+typedef struct _Generation
+{
+    const char *baseName;
 
+} sGeneration;
+
+int extractTemplate(const char *templateArchive,
+                    const char *destDir,
+                     sGeneration *pgen);
 
 #endif
 

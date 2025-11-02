@@ -36,6 +36,16 @@
 #include <proto/string.h>
 #include <gadgets/string.h>
 
+#include <proto/texteditor.h>
+#include <gadgets/texteditor.h>
+
+/*
+#include <proto/requester.h>
+#include <classes/requester.h>
+*/
+#include <proto/asl.h>
+#include <libraries/asl.h>
+
 #include "compilers.h"
 
 
@@ -53,6 +63,7 @@ struct Library *UtilityBase=NULL; // inlined DoMethod() may use CallHooksKpt().
 struct Library *LayersBase=NULL; // only used by gadgets drawing in static link mode.
 // used for appicon.
 struct Library *IconBase=NULL;
+struct Library *AslBase=NULL;
 
 // boopsi classes bases:
 struct Library *WindowBase=NULL;
@@ -62,6 +73,8 @@ struct Library *ButtonBase=NULL;
 struct Library *LabelBase=NULL;
 struct Library *CheckBoxBase=NULL;
 struct Library *StringBase=NULL;
+struct Library *TextFieldBase=NULL;
+//struct Library *RequesterBase=NULL;
 
 void cleanexit(const char *pmessage)
 {
@@ -73,7 +86,10 @@ void cleanexit(const char *pmessage)
 void exitclose(void);
 
 void guiNotifier(int loglevel, const char *log);
-
+// synchronize greying buttons...
+void updateUIToStates();
+void selectTemplate(int i);
+void generate();
 // usefull union for dispatchers. Each structs also starts with MethodID.
 typedef union MsgUnion
 {
@@ -91,11 +107,12 @@ typedef union MsgUnion
 
 /* Gadget action IDs, just to demonstrate some interactions
  */
-#define GAD_BUTTON_RECENTER 1
-#define GAD_KEYBOARDVIEW_TOTEST 2
+#define GAD_BUTTON_GENERATE 1
 #define GAD_CB_SASC 3
 #define GAD_CB_MAKEFILE 4
 #define GAD_CB_CMAKELIST 5
+
+#define GAD_START_SELECT_TEMPLATE 16
 
 
 
@@ -114,20 +131,23 @@ struct App
 
     Object *mainvlayout;
         Object *horizontallayoutA;
-            Object *titlelabel;
+         //   Object *titlelabel;
         Object *horizontallayoutB;
-        Object *horizontallayoutBList;
-        Object *horizontallayoutBForm;
-            Object *templateList;
-            // switch page
-            Object *vertlayout_temp;
+        Object *layoutBList;
+            // form constants
+            Object *projectNameString;
+            Object *projectDescription;
+        Object *layoutBForm;
+
+        Object* btGenerate;
+
             // status bar
         Object *horizontallayoutC;
-            Object *statusBarBtlabel;
         Object *bottombarlayout;
             Object* statusbarlabel;
 
-//            Object *disablecheckbox;
+    Object **TemplateButtonsList;
+
 };
 // Boopsi class pointer to manage our private modelclass.
 Class *AppModelClass = NULL;
@@ -161,36 +181,18 @@ ULONG ASM SAVEDS AppModelDispatch(
             // here receive events from gadgets as target.
             ULONG sender_ID=0;
             if((ptag = FindTagItem( GA_ID,M->opUpdate.opu_AttrList ))!=NULL) sender_ID = ptag->ti_Data;
-
             // our gadget is notifying new clicked coordinates!
-            if( sender_ID == GAD_KEYBOARDVIEW_TOTEST )
-            {   // table used as parameter for the button internal sprintf() formating
-//                LONG centerXY[2];
-//                if((ptag = FindTagItem( KEYBOARDVIEW_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
-//                    centerXY[0] = ((UWORD)ptag->ti_Data * 100)>>16; // get percent
-//                if((ptag = FindTagItem( KEYBOARDVIEW_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
-//                    centerXY[1] = ((UWORD)ptag->ti_Data * 100)>>16;
+            // note any button action is either managed here or in more generic main loop
 
-//                if(app->labelValues)
-//                {
-//                    // display coords in button label with formatting:
-//                    SetGadgetAttrs((struct Gadget *)app->labelValues,app->win,NULL,
-//                        GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
-//                        BUTTON_VarArgs,(ULONG) &centerXY[0],
-//                        TAG_END);
-//                }
-                retval = 1;
-            }
-            //else if(sender_ID == GAD_CB DISABLECHECKBOX)
-            //{   // also works, but would be activated for all attribs sent:
-                //ULONG v;
-                //GetAttr(GA_SELECTED, app->disablecheckbox, &v);
-//                if((ptag = FindTagItem( GA_SELECTED,M->opUpdate.opu_AttrList ))!=NULL)
-//                {   // checkbox sent new Disable value.
-//                    SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,ptag->ti_Data,TAG_END);
-//                }
-//            }
-            else // if ...other receive mamangement... else
+            // if( sender_ID >= GAD_START_SELECT_TEMPLATE)
+            // {
+            // } else
+            // if( sender_ID == GAD_BUTTON_GENERATE )
+            // {
+            //     retval = 1;
+            // }
+
+            // else // if ...other receive mamangement... else
             {
                 retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
             }
@@ -224,6 +226,91 @@ void closeAppModel(void)
     if(AppModelClass) FreeClass(AppModelClass);
     AppModelClass = NULL;
 }
+
+static Object *populateTemplateList()
+{
+
+    int nbtemplates = getNbTemplates();
+    sWizTemplate *pt;
+
+    static const ULONG const listtagsstart[]={
+                LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
+                LAYOUT_EvenSize, TRUE,
+                LAYOUT_HorizAlignment, LALIGN_RIGHT
+                };
+
+    int nbstartpairs=3;
+    ULONG *plisttags = AllocVec(sizeof(listtagsstart)+(sizeof(ULONG)*(8*nbtemplates+3)),0);
+    memcpy(plisttags,listtagsstart,sizeof(listtagsstart));
+    ULONG *plisttagsr =  plisttags + (sizeof(listtagsstart)/sizeof(ULONG)) ;
+
+    pt = getTemplates();
+
+    int nbtemplate = getNbTemplates();
+    if(nbtemplate>0)
+    {
+        app->TemplateButtonsList = AllocVec(sizeof(Object *)*nbtemplate,MEMF_CLEAR );
+    }
+    Object **pTmpleBtList = app->TemplateButtonsList;
+    int itemplate=0;
+    while(pt) {
+        const char *pdisplayname = (pt->_displayName)?pt->_displayName:"?";
+        Object* label1 = NewObject( BUTTON_GetClass(),NULL,
+                            GA_Text,(ULONG)pdisplayname,
+                            GA_RelVerify, TRUE,
+                             BUTTON_Justification, BCJ_LEFT,
+                            BUTTON_PushButton, TRUE,
+                        GA_ID,(GAD_START_SELECT_TEMPLATE+itemplate),
+                        TAG_END);
+        *pTmpleBtList++ =  label1;
+
+
+        *plisttagsr++ = LAYOUT_AddChild;
+        *plisttagsr++ = (ULONG)label1;
+        *plisttagsr++ = CHILD_WeightedHeight;
+        *plisttagsr++ = 0;
+        if(pt->_versionstring)
+        {
+            Object* oversion= (Object *)NewObject( BUTTON_GetClass(),NULL,
+                GA_DrawInfo,(ULONG) app->drawInfo,
+                BUTTON_BevelStyle,BVS_NONE,
+                BUTTON_Transparent, TRUE,
+                GA_ReadOnly, TRUE,
+                BUTTON_Justification, BCJ_LEFT,
+                GA_Text,(ULONG)pt->_versionstring,
+
+            TAG_END);
+            *plisttagsr++ = LAYOUT_AddChild;
+            *plisttagsr++ = (ULONG)oversion;
+            *plisttagsr++ = CHILD_WeightedHeight;
+            *plisttagsr++ = 0;
+        }
+        pt = pt->_pNext;
+        itemplate++;
+    }
+
+    Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
+                //GA_DrawInfo,(ULONG) app->drawInfo,
+                BUTTON_BevelStyle,BVS_NONE,
+                BUTTON_Transparent, TRUE,
+                GA_ReadOnly, TRUE,
+                BUTTON_Justification, BCJ_CENTER,
+                GA_Text,(ULONG)" ",
+                TAG_END);
+
+
+    *plisttagsr++ = LAYOUT_AddChild;
+    *plisttagsr++ = (ULONG)ospacer;
+    *plisttagsr++ = TAG_END;
+
+    Object *pTemplateLayoutList =
+        (Object *)NewObjectA( LAYOUT_GetClass(), NULL,plisttags);
+   FreeVec(plisttags);
+
+    return pTemplateLayoutList;
+}
+
+
 //  - - - -- - - - -  end of App modelclass management.
 
 int main(int argc, char **argv)
@@ -248,6 +335,8 @@ int main(int argc, char **argv)
     if ( ! (IconBase = OpenLibrary("icon.library",39)))
         cleanexit("Can't open icon.library");
 
+    if ( ! (AslBase = OpenLibrary("asl.library",39)))
+        cleanexit("Can't open asl.library");
     // note: DOSBase is opened by C startup.
 
     // - - - - open boopsi classes...
@@ -273,6 +362,12 @@ int main(int argc, char **argv)
     if ( ! (StringBase = OpenLibrary("gadgets/string.gadget",44)))
         cleanexit("Can't open string.gadget");
 
+    if ( ! (TextFieldBase = OpenLibrary("gadgets/texteditor.gadget",44)))
+        cleanexit("Can't open texteditor.gadget");
+
+    // if ( ! (RequesterBase = OpenLibrary("requester.class",44)))
+    //     cleanexit("Can't open requester.class");
+
     if(!initAppModel())  cleanexit("Can't create app");
 
 
@@ -287,67 +382,13 @@ int main(int argc, char **argv)
     app->fontHeight = 8+4; // default;
     if(app->drawInfo && app->drawInfo->dri_Font) app->fontHeight =app->drawInfo->dri_Font->tf_YSize + 4;
 
-//    app->testbt = (Object *)NewObject( NULL, "button.gadget",
-//                                    GA_DrawInfo, app->drawInfo,
-//                              //      GA_TextAttr, &garnet16,
-//                                    GA_ID,GAD_BUTTON_RECENTER,
-//                                    GA_Text, "R_ecenter",
-//                                    GA_RelVerify, TRUE, // needed
-//                                TAG_END);
-
-
-//    if(!app->testbt) cleanexit("Can't button");
-
-//    app->horizontallayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
-//                LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
-//                LAYOUT_EvenSize, TRUE,
-//                LAYOUT_HorizAlignment, LALIGN_RIGHT,
-//               // LAYOUT_SpaceInner, FALSE,
-//                LAYOUT_AddChild, app->testbt,
-////                LAYOUT_AddChild, app->kbdview,
-//                TAG_DONE);
-
-//    if(!app->horizontallayout) cleanexit("Can't layout 1");
-
-
-
-// app->label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
-//                        LABEL_DrawInfo, app->drawInfo,
-//                        //IA_Font, &helvetica15bu,
-//                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
-//                        LABEL_Justification, LABEL_CENTRE,
-//                        LABEL_Text,(ULONG)"Values:",
-//                    TAG_END);
-
-// app->labelValues = (Object *)NewObject( NULL, "button.gadget",
-//                        GA_DrawInfo,(ULONG) app->drawInfo,
-//                        BUTTON_BevelStyle,BVS_NONE,
-//                        BUTTON_Transparent, TRUE,
-//                        BUTTON_Justification, BCJ_CENTER,
-//                        GA_Text,(ULONG)"...",
-//                    TAG_END);
-
-
-//    app->disablecheckbox = (Object *)NewObject( CHECKBOX_GetClass(), NULL,
-//                    GA_DrawInfo,(ULONG) app->drawInfo,
-//                    GA_Text,(ULONG)"Disable",
-//                 // tried auto attrib mapping with this, has terrible side effects.
-//                 //  ICA_TARGET,(ULONG)app->kbdview, // send the state change to this.
-//                 //  ICA_MAP,(ULONG)&attribToAttribMapping[0],
-//                 GA_ID,GAD_DISABLECHECKBOX,
-//                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-//                TAG_END);
-
-//    if(!app->disablecheckbox) cleanexit("Can't create checkbox");
-
-
     {
         Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
                         LABEL_DrawInfo, app->drawInfo,
                         //IA_Font, &helvetica15bu,
                         //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
                         LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"Boopsi Wizard",
+                        LABEL_Text,(ULONG)"Boopsi Wizard 0.01beta",
                     TAG_END);
 
 
@@ -368,133 +409,92 @@ int main(int argc, char **argv)
     }
 
     {
-        {
-            int nbtemplates = getNbTemplates();
-            sWizTemplate *pt;
-
-            static const ULONG const listtagsstart[]={
-                        LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
-                        LAYOUT_EvenSize, TRUE,
-                        LAYOUT_HorizAlignment, LALIGN_RIGHT
-                        };
-
-            int nbstartpairs=3;
-            ULONG *plisttags = AllocVec(sizeof(listtagsstart)+(sizeof(ULONG)*(4*nbtemplates+3)),0);
-            memcpy(plisttags,listtagsstart,sizeof(listtagsstart));
-            ULONG *plisttagsr =  plisttags + (sizeof(listtagsstart)/sizeof(ULONG)) ;
-
-            pt = getTemplates();
-            while(pt) {
-                const char *pdisplayname = (pt->_displayName)?pt->_displayName:"?";
-                Object* label1 = NewObject( BUTTON_GetClass(),NULL,
-                                    GA_Text,(ULONG)pdisplayname,
-                                    GA_RelVerify, TRUE,
-                                    BUTTON_PushButton, TRUE,
-                        // BUTTON_BevelStyle,BVS_NONE,
-                        // BUTTON_Transparent, TRUE,
-                                TAG_END);
-
-                *plisttagsr++ = LAYOUT_AddChild;
-                *plisttagsr++ = (ULONG)label1;
-                *plisttagsr++ = CHILD_WeightedHeight;
-                *plisttagsr++ = 0;
-//                CHILD_WeightedHeight,0,
-                pt = pt->_pNext;
-            }
-
-            Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
-                        //GA_DrawInfo,(ULONG) app->drawInfo,
-                        BUTTON_BevelStyle,BVS_NONE,
-                        BUTTON_Transparent, TRUE,
-						GA_ReadOnly, TRUE,
-                        BUTTON_Justification, BCJ_CENTER,
-
-                        GA_Text,(ULONG)" ",
-                        TAG_END);
-
-
-            *plisttagsr++ = LAYOUT_AddChild;
-            *plisttagsr++ = (ULONG)ospacer;
-            *plisttagsr++ = TAG_END;
-
-//        Object* label1 = NewObject( BUTTON_GetClass(),NULL,
-//                                    GA_Text, "Gadget C Projec",
-//                                    GA_RelVerify, TRUE,
-//                                    BUTTON_PushButton, TRUE,
-//                        // BUTTON_BevelStyle,BVS_NONE,
-//                        // BUTTON_Transparent, TRUE,
-//                                TAG_END);
-
-        // (Object *)NewObject( LABEL_GetClass(), NULL,
+        app->layoutBList = populateTemplateList();
+    }
+    {
+        // Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
         //                 LABEL_DrawInfo, app->drawInfo,
         //                 //IA_Font, &helvetica15bu,
         //                 //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
         //                 LABEL_Justification, LABEL_CENTRE,
-        //                 LABEL_Text,(ULONG)"List",
+        //                 LABEL_Text,(ULONG)"Form",
         //             TAG_END);
-//        Object* label2 = NewObject( BUTTON_GetClass(),NULL,
-//                                    GA_Text, "Library C Project",
-//                                    GA_RelVerify, TRUE,
-//                        // BUTTON_BevelStyle,BVS_NONE,
-//                        // BUTTON_Transparent, TRUE,
-//                                TAG_END);
-//        Object* label3 = NewObject( BUTTON_GetClass(),NULL,
-//                                    GA_Text, "Datatype Image C Project",
-//                                    GA_RelVerify, TRUE,
-//                        // BUTTON_BevelStyle,BVS_NONE,
-//                        // BUTTON_Transparent, TRUE,
-//                                TAG_END);
 
-           app->horizontallayoutBList =
-                (Object *)NewObjectA( LAYOUT_GetClass(), NULL,plisttags);
-           FreeVec(plisttags);
+                    // LAYOUT_AddChild
+        // in this layout, all should have a CHILD_Label
+        Object *subform;
+        {
 
-//        app->horizontallayoutBList =
-//             (Object *)NewObject( LAYOUT_GetClass(), NULL,
-//                    LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
-//                    LAYOUT_EvenSize, TRUE,
-//                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
-//                  //  CHILD_ScaleHeight,1, //%
-//                   // CHILD_MaxHeight,app->fontHeight,
-//                   // LAYOUT_SpaceInner, FALSE,
-//                    LAYOUT_AddChild, label1,
-//                CHILD_WeightedHeight,0,
-//                    LAYOUT_AddChild, label2,
-//                CHILD_WeightedHeight,0,
-//                    LAYOUT_AddChild, label3,
-//                CHILD_WeightedHeight,0,
-//                    LAYOUT_AddChild,ospacer,
-//                CHILD_WeightedHeight,1,
-//                  //  LAYOUT_AddChild, app->labelValues,
-//                   // LAYOUT_AddChild, app->disablecheckbox,
-//                  //  GA_Height,app->fontHeight,
-//                    TAG_DONE);
+        app->projectNameString = NewObject( STRING_GetClass(), NULL,
+                        GA_RelVerify, TRUE,
+                        STRINGA_MaxChars, 26,
+                        STRINGA_TextVal, "ProjectName",
+                    TAG_END);
+                    // CHILD_Label
+          Object *label_ProjectNameString = NewObject( LABEL_GetClass(), NULL,
+                        LABEL_Text, "Project Name",
+                            TAG_END);
+
+            subform = (Object *)NewObject( LAYOUT_GetClass(), NULL,
+                    LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
+                    LAYOUT_EvenSize, FALSE,
+                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                    LAYOUT_BevelStyle, BVS_NONE,
+
+                    LAYOUT_AddChild, app->projectNameString,
+                    CHILD_Label, label_ProjectNameString,
+                    CHILD_WeightedHeight,0,
+
+                    // LAYOUT_AddChild,formspacer,
+                    // CHILD_WeightedHeight,1,
+
+                    TAG_DONE);
+
         }
 
-
-        {
-        Object* label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
-                        LABEL_DrawInfo, app->drawInfo,
-                        //IA_Font, &helvetica15bu,
-                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
-                        LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"Form",
+        app->projectDescription = NewObject( TEXTEDITOR_GetClass(), NULL,
+                        GA_TEXTEDITOR_Contents,(ULONG)"...",
+                        GA_TEXTEDITOR_ReadOnly, TRUE,
+                        //        LAYOUT_BevelStyle, BVS_NONE,
                     TAG_END);
-        app->horizontallayoutBForm =
+
+    // Object* formspacer = NewObject( BUTTON_GetClass(),NULL,
+    //             //GA_DrawInfo,(ULONG) app->drawInfo,
+    //             BUTTON_BevelStyle,BVS_NONE,
+    //             BUTTON_Transparent, TRUE,
+    //             GA_ReadOnly, TRUE,
+    //             BUTTON_Justification, BCJ_CENTER,
+    //             GA_Text,(ULONG)" ",
+    //             TAG_END);
+
+        app->layoutBForm =
              (Object *)NewObject( LAYOUT_GetClass(), NULL,
                     LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
-                    LAYOUT_EvenSize, TRUE,
+                    LAYOUT_EvenSize, FALSE,
                     LAYOUT_HorizAlignment, LALIGN_RIGHT,
                     LAYOUT_BevelStyle, BVS_GROUP,
+
+                    LAYOUT_TopSpacing,2,
+                    LAYOUT_LeftSpacing,2,
+                    LAYOUT_RightSpacing,2,
+                    LAYOUT_BottomSpacing,2,
+
                   //  CHILD_ScaleHeight,1, //%
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
-                    LAYOUT_AddImage, label1,
-                  //  LAYOUT_AddChild, app->labelValues,
-                   // LAYOUT_AddChild, app->disablecheckbox,
-                  //  GA_Height,app->fontHeight,
+     //               LAYOUT_AddImage, label1,
+                   // CHILD_WeightedHeight,0,
+
+                    LAYOUT_AddChild, subform,
+                    CHILD_WeightedHeight,0,
+
+                    LAYOUT_AddChild,app->projectDescription,
+                    CHILD_WeightedHeight,1,
+
+                    // LAYOUT_AddChild,formspacer,
+                    // CHILD_WeightedHeight,1,
+
                     TAG_DONE);
-        }
 
         app->horizontallayoutB =
              (Object *)NewObject( LAYOUT_GetClass(), NULL,
@@ -505,49 +505,40 @@ int main(int argc, char **argv)
                    // CHILD_MaxHeight,app->fontHeight,
                    // LAYOUT_SpaceInner, FALSE,
                    // LAYOUT_AddImage, label1,
-                   LAYOUT_AddChild,  app->horizontallayoutBList,
+                   LAYOUT_AddChild,  app->layoutBList,
                 CHILD_WeightedWidth,0,
-                    LAYOUT_AddChild, app->horizontallayoutBForm,
+                    LAYOUT_AddChild, app->layoutBForm,
                 CHILD_WeightedWidth,1,
                   //  GA_Height,app->fontHeight,
                     TAG_DONE);
     }
 
     {
-//        Object* ospacer = NewObject( BUTTON_GetClass(),NULL,
-//                        //GA_DrawInfo,(ULONG) app->drawInfo,
-//                        BUTTON_BevelStyle,BVS_NONE,
-//                        BUTTON_Transparent, TRUE,
-//						GA_ReadOnly, TRUE,
-//                        BUTTON_Justification, BCJ_CENTER,
 
-//                        GA_Text,(ULONG)" ",
-//                        TAG_END);
-
-                                Object* cbsasc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
-                                    GA_DrawInfo,(ULONG) app->drawInfo,
-                                    GA_Text,(ULONG)"SASC6.5 smakefile (1996,C90)",
-                                    CHECKBOX_Checked,TRUE,
-                                 GA_ID,GAD_CB_SASC,
-                                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                                TAG_END);
+                    Object* cbsasc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
+                        GA_DrawInfo,(ULONG) app->drawInfo,
+                        GA_Text,(ULONG)"SASC6.5 smakefile (1996,C90)",
+                        CHECKBOX_Checked,TRUE,
+                     GA_ID,GAD_CB_SASC,
+                     ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                    TAG_END);
 
 
-                                Object* cbgcc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
-                                    GA_DrawInfo,(ULONG) app->drawInfo,
-                                    GA_Text,(ULONG)"GCC2.9x makefile (1999,C98)",
-                                    CHECKBOX_Checked,TRUE,
-                                 GA_ID,GAD_CB_MAKEFILE,
-                                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                                TAG_END);
+                    Object* cbgcc =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
+                        GA_DrawInfo,(ULONG) app->drawInfo,
+                        GA_Text,(ULONG)"GCC2.9x makefile (1999,C98)",
+                        CHECKBOX_Checked,TRUE,
+                     GA_ID,GAD_CB_MAKEFILE,
+                     ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                    TAG_END);
 
-                                Object* cbcmake =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
-                                    GA_DrawInfo,(ULONG) app->drawInfo,
-                                    GA_Text,(ULONG)"GCC6.5 CMake (2011,C11)",
-                                    CHECKBOX_Checked,TRUE,
-                                 GA_ID,GAD_CB_CMAKELIST,
-                                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                                TAG_END);
+                    Object* cbcmake =  (Object *)NewObject( CHECKBOX_GetClass(), NULL,
+                        GA_DrawInfo,(ULONG) app->drawInfo,
+                        GA_Text,(ULONG)"GCC6.5 CMakeList.txt (2011,C11)",
+                        CHECKBOX_Checked,TRUE,
+                     GA_ID,GAD_CB_CMAKELIST,
+                     ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
+                    TAG_END);
 
 
         Object *targetcblayout =     (Object *)NewObject( LAYOUT_GetClass(), NULL,
@@ -559,9 +550,11 @@ int main(int argc, char **argv)
                    LAYOUT_AddChild, cbcmake,
                     TAG_DONE);
 
-        Object* btGenerate = NewObject( BUTTON_GetClass(),NULL,
+        app->btGenerate = NewObject( BUTTON_GetClass(),NULL,
                                     GA_Text, "Generate",
+                                    GA_ID,GAD_BUTTON_GENERATE,
                                     GA_RelVerify, TRUE,
+                                    GA_Disabled,TRUE,
                         // BUTTON_BevelStyle,BVS_NONE,
                         // BUTTON_Transparent, TRUE,
                                 TAG_END);
@@ -581,7 +574,7 @@ int main(int argc, char **argv)
                      LAYOUT_AddChild, targetcblayout,
                  CHILD_WeightedWidth,3,
 
-                    LAYOUT_AddChild, btGenerate,
+                    LAYOUT_AddChild, app->btGenerate,
                  CHILD_WeightedWidth,0,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
@@ -651,21 +644,7 @@ int main(int argc, char **argv)
             TAG_END);
         if (!app->mainvlayout) cleanexit("layout error 3");
     } //end if screen
-/*
-    Object *mainvlayout;
-        Object *horizontallayoutA;
-            Object *titlelabel;
-        Object *horizontallayoutB;
-            Object *templateList;
-            // switch page
-            Object *vertlayout_temp;
-            // status bar
-        Object *horizontallayoutC;
-            Object *statusBarBtlabel;
-        Object *bottombarlayout;
-            Object *label1;
-            Object *labelValues;
-*/
+
 
     app->app_port = CreateMsgPort();
 
@@ -690,10 +669,10 @@ int main(int argc, char **argv)
     if(!app->win) cleanexit("can't open window");
 
 
-// gui not inited here.
+    updateUIToStates();
+    // gui inited here.
     {
         char temp[64];
-            printf("go notif\n");
         snprintf(temp,63,"Found %d templates", getNbTemplates());
         guiNotifier(0,temp);
     }
@@ -720,6 +699,7 @@ int main(int argc, char **argv)
              */
             while ((result = DoMethod(app->window_obj, WM_HANDLEINPUT, /*code*/NULL)) != WMHI_LASTMSG)
             {
+            // printf("result:%08x\n",(int)result);
                 switch(result & WMHI_CLASSMASK)
                 {
                    case WMHI_RAWKEY:
@@ -732,78 +712,26 @@ int main(int argc, char **argv)
                         break;
 
                     case WMHI_GADGETUP:
-                        switch (result & WMHI_GADGETMASK)
+                    {
+                        ULONG gid = result &0xffff;
+                       // printf("up gid:%d\n",gid);
+                        if(gid>=GAD_START_SELECT_TEMPLATE)
+                        {   // toggle button: which state ?
+                            int selected = 0;
+                            gid -= GAD_START_SELECT_TEMPLATE;
+                            if(app->TemplateButtonsList[gid])
+                            {
+                                GetAttr(GA_ToggleSelect, app->TemplateButtonsList[gid], &selected);
+                               // printf("selstate:%d\n",selected);
+                            }
+
+                            selectTemplate(gid);
+                        } else if(gid == GAD_BUTTON_GENERATE)
                         {
-                            case GAD_BUTTON_RECENTER:
-                                // does the button action.
-                                // change attributes of the gadget we created:
-                                // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
-//                                SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL,
-//                                    KEYBOARDVIEW_CenterX, 32768,
-//                                    KEYBOARDVIEW_CenterY, 32768,
-//                                    TAG_DONE);
-                            break;
-
-                        /*
-                            case GAD_FORWARD:
-                                GetAttr(PAGE_Current, page, &current_page);
-                                if (current_page < NUM_PAGES)
-                                {
-                                    if (current_page == 0)
-                                        if (SetGadgetAttrs(back_gad, win, NULL, GA_Disabled, FALSE, TAG_DONE))
-                                            RefreshGList(layout2, win, NULL, 1);
-
-                                    current_page++;
-
-                                    if (current_page == NUM_PAGES)
-                                        if (SetGadgetAttrs(forward_gad, win, NULL, GA_Disabled, TRUE, TAG_DONE))
-                                            RefreshGList(layout2, win, NULL, 1);
-
-                                    SetGadgetAttrs(page, win, NULL, PAGE_Current, current_page, TAG_DONE);
-                                    RethinkLayout(layout1, win, NULL, TRUE);
-                                }
-                                break;
-
-                            case GAD_GETFILE:
-                                DoMethod((Object *)getfile_gad , GFILE_REQUEST , win);
-                                break;
-
-                            case GAD_GETFONT:
-                                DoMethod((Object *)getfont_gad , GFONT_REQUEST , win);
-                                break;
-
-                            case GAD_GETSCREEN:
-                                RequestScreenMode((Object *)getscreen_gad, win);
-                                break;
-
-                            case GAD_BACK:
-                                GetAttr(PAGE_Current, page, &current_page);
-                                if (current_page > 0)
-                                {
-                                    if (current_page == NUM_PAGES)
-                                        if (SetGadgetAttrs(forward_gad, win, NULL, GA_Disabled, FALSE, TAG_DONE))
-                                            RefreshGList(layout2, win, NULL, 1);
-
-                                    current_page--;
-
-                                    if (current_page == 0)
-                                        if (SetGadgetAttrs(back_gad, win, NULL, GA_Disabled, TRUE, TAG_DONE))
-                                            RefreshGList(layout2, win, NULL, 1);
-
-                                    SetGadgetAttrs(page, win, NULL, PAGE_Current, current_page, TAG_DONE);
-                                    RethinkLayout(layout1, win, NULL, TRUE);
-                                }
-                                break;
-
-                            case GAD_QUIT:
-                                ok = FALSE;
-                                break;
-*/
-                            default:
-                                break;
+                            generate();
                         }
                         break;
-
+                    }
                     case WMHI_ICONIFY:
                         //if (RA_Iconify(window_obj)) win = NULL;
                         if(DoMethod(app->window_obj, WM_ICONIFY, NULL)) app->win = NULL;
@@ -832,18 +760,14 @@ void guiNotifier(int loglevel, const char *log)
 {
     if(!app || !app->statusbarlabel) return;
 
-//    SetGadgetAttrs((struct Gadget *)app->statusbarlabel,app->win,NULL,
-//        GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
-//       // BUTTON_VarArgs,(ULONG) &centerXY[0],
-//        TAG_END);
+// todo errors in red/ warning in orange
 //re    int textpen = -1; // default text pen
-
- printf("SetGadgetAttrs:%s\n",log);
     SetGadgetAttrs((struct Gadget *)app->statusbarlabel,app->win,NULL,
     //    BUTTON_TextPen,(ULONG)textpen,
         GA_Text,(ULONG)log,
         TAG_END);
- printf("done\n");
+
+
 
 }
 
@@ -851,6 +775,7 @@ void exitclose(void)
 {
     if(app)
     {
+        if(app->TemplateButtonsList) FreeVec(app->TemplateButtonsList);
         /* Disposing of the window object will also close the
          * window if it is already opened and it will dispose of
          * all objects attached to it.
@@ -879,13 +804,16 @@ void exitclose(void)
 
     }
     closeAppModel();
-
+//    if(RequesterBase) CloseLibrary(RequesterBase);
+    if(TextFieldBase) CloseLibrary(TextFieldBase);
+    if(StringBase) CloseLibrary(StringBase);
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
     if(LabelBase) CloseLibrary(LabelBase);
     if(ButtonBase) CloseLibrary(ButtonBase);
     if(BitMapBase) CloseLibrary(BitMapBase);
     if(LayoutBase) CloseLibrary(LayoutBase);
     if(WindowBase) CloseLibrary(WindowBase);
+
 
     if(GfxBase) CloseLibrary((struct Library*)GfxBase);
     if(IntuitionBase) CloseLibrary((struct Library*)IntuitionBase);
@@ -894,5 +822,118 @@ void exitclose(void)
 
     //if(DOSBase) CloseLibrary((struct Library*)DOSBase);
     if(IconBase) CloseLibrary(IconBase);
+    if(AslBase) CloseLibrary(AslBase);
+
 }
+// synchronize greying buttons...
+int CurrentTemplate = -1;
+void updateUIToStates()
+{
+    if(!app) return;
+// GA_Disabled
+    ULONG generateBtDisabled = (CurrentTemplate<0);
+
+   SetGadgetAttrs((struct Gadget *) app->btGenerate,app->win,NULL,
+       GA_DISABLED,generateBtDisabled,
+       TAG_END);
+}
+
+sWizTemplate *getTemplate(int i)
+{
+    sWizTemplate *ptmpl = getTemplates();
+    while(ptmpl && i>0) { ptmpl = ptmpl->_pNext; i--; }
+    return ptmpl;
+}
+void selectTemplate(int i)
+{
+    const char *pDescription;
+    const char *pDefaultName;
+    if(!app) return;
+
+    // printf("selectTemplate:%d\n",i);
+    if(CurrentTemplate == i) return;
+    CurrentTemplate = i;
+
+    sWizTemplate *ptmpl = getTemplate(i);
+
+    pDescription = "...";
+    pDefaultName = "ProjectName";
+    if(ptmpl)
+    {
+        if(ptmpl->_comment) pDescription = ptmpl->_comment;
+        if(ptmpl->_defaultname) pDefaultName = ptmpl->_defaultname;
+    }
+
+   SetGadgetAttrs((struct Gadget *)app->projectNameString,app->win,NULL,
+       STRINGA_TextVal,(ULONG)pDefaultName,
+       TAG_END);
+
+   SetGadgetAttrs((struct Gadget *)app->projectDescription,app->win,NULL,
+       GA_TEXTEDITOR_Contents,(ULONG)pDescription,
+       TAG_END);
+
+    updateUIToStates();
+
+    // synch button state
+    // for(int j=0;j<getNbTemplates();j++)
+    // {
+    //     Object *o = app->TemplateButtonsList[j];
+    //     if(!o) continue;
+
+    //     SetGadgetAttrs((struct Gadget *)o,app->win,NULL,
+    //         GA_TEXTEDITOR_Contents,(ULONG)pDescription,
+    //         TAG_END);
+    // }
+
+
+}
+void generate()
+{
+// printf("generate\n");
+    if(!app) return;
+    if(CurrentTemplate<0) return;
+    sWizTemplate *ptmpl = getTemplate(CurrentTemplate);
+    if(!ptmpl) return;
+// printf("go\n");
+    // asl requester
+    struct FileRequester *request = AllocFileRequest();
+    if(!request) return;
+
+    int result =  AslRequestTags(request,
+                        ASLFR_DrawersOnly,TRUE,
+                        ASLFR_DoMultiSelect,FALSE,
+                        ASLFR_TitleText,(ULONG)"Choose a directory where to extract project",
+                        TAG_END);
+    if(!result || request->fr_Drawer == NULL)
+    {
+       FreeAslRequest(request);
+       guiNotifier(0,"Project Generation canceled.");
+        return;
+    }
+
+    // if(request->fr_Drawer)
+    // {
+    //     printf("dr:%s\n",request->fr_Drawer);
+    // }
+
+
+
+
+    guiNotifier(0,"Generate project ...");
+
+    {
+        sGeneration sgen;
+        GetAttr(STRINGA_TextVal, app->projectNameString,(ULONG) &sgen.baseName);
+
+        int res = extractTemplate(ptmpl->_archivename,
+                        request->fr_Drawer,
+                        &sgen);
+    }
+
+    FreeAslRequest(request);
+
+    return 0;
+}
+
+
 

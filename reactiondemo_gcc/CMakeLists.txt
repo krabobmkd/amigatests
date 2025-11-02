@@ -58,3 +58,4 @@ target_link_options(reactiondemo PRIVATE -s ${AMIGA_COMPILER_OPTIONS})
 set( REACTIONLIB_PATH "${M68KAMIGA_ROOT_PATH}/m68k-amigaos/vbcc/lib/reaction.lib" )
 
 target_link_libraries(reactiondemo ${REACTIONLIB_PATH} )
+install(TARGETS reactiondemo DESTINATION "${CMAKE_SOURCE_DIR}/..")
