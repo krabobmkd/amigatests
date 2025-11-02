@@ -388,7 +388,7 @@ int main(int argc, char **argv)
                         //IA_Font, &helvetica15bu,
                         //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
                         LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"Boopsi Wizard 0.01beta",
+                        LABEL_Text,(ULONG)"Boopsi Wizard 0.01 early beta",
                     TAG_END);
 
 
@@ -928,6 +928,11 @@ void generate()
         int res = extractTemplate(ptmpl->_archivename,
                         request->fr_Drawer,
                         &sgen);
+        if(res !=0)
+        {
+            const char *errt = extractTextError();
+            if(errt) guiNotifier(2,errt);
+        }
     }
 
     FreeAslRequest(request);

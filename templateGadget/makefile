@@ -1,4 +1,4 @@
-# this is the makefile for all Amiga GCC2.5 (GeekGadget based)
+# this is the makefile for all Amiga GCC2.x)
 # like ADE on aminet.
 # Update your compiler os-include and os-lib directories with recent NDK3.2 include and lib,
 # doing an overriding copy.

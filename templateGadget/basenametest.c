@@ -72,7 +72,7 @@
 
 // because original reaction macros
 // are not modern GCC compatible.
-#include "reactioninlines.h"
+#include "boopsiinlines.h"
 
 typedef ULONG (*REHOOKFUNC)();
 
@@ -430,7 +430,7 @@ int main(int argc, char **argv)
     if(!app->window_obj) cleanexit("can't create window");
 
     /*  Open the window. */
-    app->win = reaction_OpenWindow(app->window_obj);
+    app->win = boopsi_OpenWindow(app->window_obj);
     if(!app->win) cleanexit("can't open window");
 
     {
@@ -544,7 +544,7 @@ int main(int argc, char **argv)
                         break;
 
                     case WMHI_UNICONIFY:
-                        app->win = reaction_OpenWindow(app->window_obj);
+                        app->win = boopsi_OpenWindow(app->window_obj);
                         if (!app->win) cleanexit("can't open window");
 
                         break;

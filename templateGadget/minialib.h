@@ -1,8 +1,12 @@
 #ifndef _MINIALIB_H_
 #define _MINIALIB_H_
 /** short inline replacement for proto/alib.h (amiga tool static lib)
- * To be used when linking .class file, because gcc6.5 linker may not like alib without startup.
- * in all cases this looks more optimized, so not a bad idea I guess.
+ * BOOPSI needs alib for DoMethod()/SetSuperAttrs()/DoSuperMethod() / ...
+ * To be used when linking .class and .gadget files, but without C startup.
+ * some linker will not make alib functions work without a real c startup,
+ * and libraries .class and .gadgets doesn't have a real c startup.
+ * in all cases this is shorter and equivalent to those alib calls, so not a bad idea I guess.
+ * -krb, license is LGPL.
  */
 
 #include <proto/utility.h>
@@ -11,6 +15,7 @@
 #include <intuition/gadgetclass.h>
 #include <utility/hooks.h>
 
+// original alib methods used by boopsi are...
 // ULONG  __stdargs CallHookA( struct Hook *hookPtr, Object *obj, APTR message );
 // ULONG  __stdargs CallHook( struct Hook *hookPtr, Object *obj, ... );
 // ULONG  __stdargs DoMethodA( Object *obj, Msg message );
@@ -22,27 +27,7 @@
 // ULONG  __stdargs HookEntry( struct Hook *hookPtr, Object *obj, APTR message );
 // ULONG  __stdargs SetSuperAttrs( struct IClass *cl, Object *obj, ULONG tag1, ... );
 
-// usefull:
-//https://github.com/aros-development-team/AROS/blob/master/compiler/alib/domethod.c
-/*
-ULONG  __stdargs CallHookPkt( struct Hook *hook, APTR object, APTR paramPacket );
-#define CallHookPkt(___hook, ___object, ___paramPacket) \
-      LP3(0x66, ULONG, CallHookPkt , struct Hook *, ___hook, a0, APTR, ___object, a2, APTR, ___paramPacket, a1,\
-      , UTILITY_BASE_NAME)
-*/
-//static inline ULONG CallHookPktASM( REG(struct Hook *hook,a0),
-//                                     REG(APTR object,a2),
-//                                     REG(APTR paramPacket,a1 ))
-//{
-//    ULONG r;
-//	move.l	a1,-(sp)    <- this is aros, I bet it's per regs on aos.
-//	move.l	a2,-(sp)
-//	move.l	a0,-(sp)
-//	move.l	(h_SubEntry,a0),a0
-//	jsr	(a0)
-//	lea	(12,sp),sp
-//	return r;
-//}
+
 #ifdef __SASC
 #define AINLINE static __inline
 #else

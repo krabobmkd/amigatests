@@ -10,6 +10,7 @@ set(VERSTRING "1.0")
 set(COMMONLIBS "../../amigacommonlibs")
 
 set(ZLIBPATH "${COMMONLIBS}/zlib")
+set(MINIZIPLIBPATH "${COMMONLIBS}/zlib/contrib/minizip")
 add_subdirectory(${ZLIBPATH} zlib)
 # let's have 68000 and soft float using libs/ieeemath libs !
 # let's go "no float at all" with modified json lib....
@@ -40,8 +41,8 @@ add_executable(BoopsiWizard
 
 target_compile_options(BoopsiWizard PRIVATE ${AMIGACOMPOPTS} )
 target_link_options(BoopsiWizard PRIVATE -s )
-target_include_directories(BoopsiWizard PUBLIC ${ZLIBPATH} cjson )
-target_link_libraries(BoopsiWizard PUBLIC z cjson  )
+target_include_directories(BoopsiWizard PUBLIC ${ZLIBPATH} ${MINIZIPLIBPATH} cjson )
+target_link_libraries(BoopsiWizard PUBLIC minizip minizip z cjson  )
 # IOAPI_NO_64 is for minizip/ioapi.c
 # sources that doesn't support -O2 are moved to MameXAmigaO0 lib
 #target_compile_options(BoopsiWizard PRIVATE

@@ -52,6 +52,8 @@ typedef struct _Generation
 int extractTemplate(const char *templateArchive,
                     const char *destDir,
                      sGeneration *pgen);
+// if return !=0
+const char *extractTextError();
 
 #endif
 
