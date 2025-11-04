@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <memory.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
 
@@ -34,20 +34,24 @@ const char *extractTextError()
 
 static char lowName[32];
 static char upName[32];
+static char MajName[32];
 static void makeSecureNames(const char *pn)
 {
     int iln=0;
     int uln=0;
+    int majn=0;
     while(*pn != 0 && iln<31 && uln<31)
     {
         char c = *pn++;
-        if(c == " "){
+        if(c == ' '){
             continue;
         }
         if(c>='A' && c<='Z')
         {
             upName[uln] = c;
             uln++;
+            MajName[majn] = c;
+            majn++;
             lowName[iln] = c + ((int)'a'-(int)'A');
             iln++;
         } else
@@ -57,48 +61,60 @@ static void makeSecureNames(const char *pn)
             uln++;
             lowName[iln] = c ;
             iln++;
+            MajName[majn] = c + ((int)'A'-(int)'a');
+            majn++;
         }
     }
     upName[uln] = 0;
     lowName[iln] = 0;
-
+    MajName[majn] = 0;
 }
+
+enum
+{
+	PATH_NOT_FOUND,
+	PATH_IS_FILE,
+	PATH_IS_DIRECTORY
+};
+
 
 int get_path_info(const char *fullpath)
 {
-    BPTR hdl = Open(fullpath, MODE_OLDFILE);
-    if(!hdl)
-    {
-        return PATH_NOT_FOUND;
-    }
+    BPTR lock = Lock(fullpath,ACCESS_READ);
+
+    if(!lock) return PATH_NOT_FOUND;
+
     struct FileInfoBlock *fib = (struct FileInfoBlock *)AllocDosObject(DOS_FIB, NULL);
     if(!fib){
-        Close(hdl);
+        UnLock(lock);
         return PATH_NOT_FOUND;
     }
-    ExamineFH(hdl,fib);
+    Examine(lock, fib);
+
     int res = ((fib->fib_DirEntryType<0)?PATH_IS_FILE:PATH_IS_DIRECTORY);
     FreeDosObject(DOS_FIB,fib);
-    Close(hdl);
+    UnLock(lock);
+
     return res;
 }
 
 // would create directory recusively, return if ok.
+// hey people, that one looks C-ace awesome code !
 static int assumeDirectory(const char *fullpath)
 {
     int dirtype = get_path_info(fullpath);
     if(dirtype == PATH_IS_DIRECTORY) return PATH_IS_DIRECTORY;
 
-// n o need recurse  for the moment
-    // // if not...
-    // std::string sfullpath(fullpath);
-    // size_t i = sfullpath.rfind("/");
-    // if(i != string::npos)
-    // {
-    //     string sparent =sfullpath.substr(0,i);
-    //     int iparent = assumeDirectory(sparent.c_str());
-    //     if(iparent != PATH_IS_DIRECTORY) return PATH_NOT_FOUND;
-    // }
+    // recurse createdir
+    char *lastsep = strrchr(fullpath,'/');
+    if(lastsep)
+    {
+        *lastsep = 0;
+        int subtype = assumeDirectory(fullpath);
+        *lastsep = '/';
+        if(subtype != PATH_IS_DIRECTORY) return PATH_NOT_FOUND;
+    }
+
     BPTR l = CreateDir(fullpath);
     if(l) {
         UnLock(l);
@@ -111,6 +127,66 @@ typedef struct {
  const char *key;
  const char *repl;
 } sReplace;
+
+
+void replacefilename(char *p,const char *orig,sReplace *replacers)
+{
+    while(*orig != 0)
+    {
+        sReplace *sr = replacers;
+        int didreplace=0;
+        while(sr->key != NULL)
+        {
+            if(strncmp(orig,sr->key,strlen(sr->key))==0)
+            {
+                int l = strlen(sr->repl);
+                memcpy(p,sr->repl,l);
+                p += l;
+                orig += strlen(sr->key);
+                didreplace = 1;
+                continue;
+            }
+            sr++;
+        }
+        if(!didreplace)
+        {
+            *p++ = *orig++;
+        }
+    }
+    *p = 0;
+}
+
+
+static void replacewriteFh(FILE *fhw,const char *orig,ULONG origbsize,sReplace *replacers)
+{
+    ULONG borigdone =0;
+    while(borigdone<origbsize)
+    {
+        sReplace *sr = replacers;
+        int didreplace=0;
+        while(sr->key != NULL)
+        {
+            if(strncmp(orig,sr->key,strlen(sr->key))==0)
+            {
+                int l = strlen(sr->repl);
+                Write(fhw,sr->repl,l);
+                orig += strlen(sr->key);
+                borigdone += strlen(sr->key);
+                didreplace = 1;
+                continue;
+            }
+            sr++;
+        }
+        if(!didreplace)
+        {
+            Write(fhw,orig,1);
+            orig++;
+            borigdone++;
+           // *p++ = *orig++;
+        }
+    }
+}
+
 
 // this is the whole effective part:
 // file names and uppercase/lower cases are all replaced while writting
@@ -130,7 +206,7 @@ int replaceWrite(const char *originalbin, ULONG origbsize,
     // if dvice: no need to /
     if(destbase[strlen(destbase)-1]!= ':')  strcat(fulldestpath,"/");
     strcat(fulldestpath,upName);
- printf("dirpath:%s\n",fulldestpath);
+// printf("dirpath:%s\n",fulldestpath);
 
     int dirtype = assumeDirectory(fulldestpath);
     if(dirtype != PATH_IS_DIRECTORY)
@@ -138,20 +214,47 @@ int replaceWrite(const char *originalbin, ULONG origbsize,
       errorstring = "can't create project directory";
      return 1;
     }
+
     // - - - -
     sReplace replacers[]={
         {"basename",lowName},
         {"BaseName",upName},
+        {"BASENAME",MajName},
         {NULL,NULL}
     };
     // got to remap file name
     // origfilepath
+    int res=0;
+    // replace/ write engine.
+    {
+        char *pfinalnamepath = AllocVec(fullbase_l+1+256,0);
+        if(pfinalnamepath)
+        {
+            *pfinalnamepath = 0;
+            strcat(pfinalnamepath,fulldestpath);
+            strcat(pfinalnamepath,"/");
+            replacefilename(pfinalnamepath+strlen(pfinalnamepath),origfilepath,replacers);
+            FILE *fhw = Open(pfinalnamepath,MODE_NEWFILE);
+            if(!fhw)
+            {
+                errorstring = "can't write file in directory";
+                res = 1;
+            } else
+            {
+                replacewriteFh(fhw,originalbin,origbsize,replacers);
+                Close(fhw);
+            }
+            FreeVec(pfinalnamepath);
+        }
+ //       BPTR hdl = Open(fullpath, MODE_NEWFILE);
+ //   ULONG fullbase_l = strlen(destbase)+2+strlen(upName);
 
-    // TODO replace/ write engine.
 
+
+    } // end writting paragraph
     // - - - -
     FreeVec(fulldestpath);
-    return 0;
+    return res;
 }
 
 int extractTemplate(const char *templateArchive,
@@ -172,6 +275,13 @@ int extractTemplate(const char *templateArchive,
     makeSecureNames(pgen->baseName);
 
     extractClose(); // in case of previous call.
+    if(lowName[0]==0 ||
+        upName[0]==0 )
+    {
+        errorstring = "Project name is empty, use only letters";
+        return 1;
+    }
+
 
     btemp[0]=0;
     strcat(btemp,"PROGDIR:templates/");
@@ -183,7 +293,7 @@ int extractTemplate(const char *templateArchive,
         return 1;
     }
 
-    printf("unzip ok\n");
+//    printf("unzip ok\n");
 
     int r = unzGoToFirstFile(zF);
     int rr=0;
@@ -205,7 +315,7 @@ int extractTemplate(const char *templateArchive,
                                          NULL,//char *szComment,
                                          0 //uLong commentBufferSize
                                          );
-        printf("f:%s\n",tfilename);
+        //printf("f:%s\n",tfilename);
         // to read a file in zip, need open/read close,
         int zferr = unzOpenCurrentFile(zF);
         if(zferr == UNZ_OK)
@@ -218,9 +328,8 @@ int extractTemplate(const char *templateArchive,
                 if(nbdone == zfinfo.uncompressed_size)
                 {
                     // extracted !
-                    printf("looks extracted ok!\n");
+                    //printf("looks extracted ok!\n");
                     rr |= replaceWrite(f, nbdone,tfilename,destDir); // !=0 if any error
-
                 }
                 FreeVec(f);
             }
@@ -231,5 +340,9 @@ int extractTemplate(const char *templateArchive,
     }
 
     extractClose();
+    if(rr==0)
+    {
+         errorstring = "Project created !";
+    }
     return rr;
 }

@@ -398,9 +398,6 @@ int main(int argc, char **argv)
                     LAYOUT_EvenSize, TRUE,
                     LAYOUT_HorizAlignment, LALIGN_RIGHT,
                     LAYOUT_BevelStyle, BVS_GROUP,
-                  //  CHILD_ScaleHeight,1, //%
-                   // CHILD_MaxHeight,app->fontHeight,
-                   // LAYOUT_SpaceInner, FALSE,
                     LAYOUT_AddImage, label1,
                   //  LAYOUT_AddChild, app->labelValues,
                    // LAYOUT_AddChild, app->disablecheckbox,
@@ -432,7 +429,7 @@ int main(int argc, char **argv)
                     TAG_END);
                     // CHILD_Label
           Object *label_ProjectNameString = NewObject( LABEL_GetClass(), NULL,
-                        LABEL_Text, "Project Name",
+                        LABEL_Text, "Set Project Name",
                             TAG_END);
 
             subform = (Object *)NewObject( LAYOUT_GetClass(), NULL,
@@ -551,7 +548,7 @@ int main(int argc, char **argv)
                     TAG_DONE);
 
         app->btGenerate = NewObject( BUTTON_GetClass(),NULL,
-                                    GA_Text, "Generate",
+                                    GA_Text, "Generate Project",
                                     GA_ID,GAD_BUTTON_GENERATE,
                                     GA_RelVerify, TRUE,
                                     GA_Disabled,TRUE,
@@ -717,15 +714,16 @@ int main(int argc, char **argv)
                        // printf("up gid:%d\n",gid);
                         if(gid>=GAD_START_SELECT_TEMPLATE)
                         {   // toggle button: which state ?
-                            int selected = 0;
+
                             gid -= GAD_START_SELECT_TEMPLATE;
                             if(app->TemplateButtonsList[gid])
                             {
-                                GetAttr(GA_ToggleSelect, app->TemplateButtonsList[gid], &selected);
-                               // printf("selstate:%d\n",selected);
+                                 int selected = 0;
+                                GetAttr(GA_Selected, app->TemplateButtonsList[gid], &selected);
+                                if(selected)  selectTemplate(gid);
                             }
 
-                            selectTemplate(gid);
+
                         } else if(gid == GAD_BUTTON_GENERATE)
                         {
                             generate();
@@ -872,18 +870,17 @@ void selectTemplate(int i)
        GA_TEXTEDITOR_Contents,(ULONG)pDescription,
        TAG_END);
 
-    updateUIToStates();
+    updateUIToStates(); // greying
 
-    // synch button state
-    // for(int j=0;j<getNbTemplates();j++)
-    // {
-    //     Object *o = app->TemplateButtonsList[j];
-    //     if(!o) continue;
-
-    //     SetGadgetAttrs((struct Gadget *)o,app->win,NULL,
-    //         GA_TEXTEDITOR_Contents,(ULONG)pDescription,
-    //         TAG_END);
-    // }
+    // switch of other buttons,; yes it behaves like radio buttons, but that's my choice.
+    for(int j=0;j<getNbTemplates();j++)
+    {
+        if(i == j) continue;
+        Object *o = app->TemplateButtonsList[j];
+        if(!o) continue;
+        SetGadgetAttrs((struct Gadget *)o,app->win,NULL,
+            GA_Selected,FALSE,TAG_END);
+    }
 
 
 }
@@ -916,9 +913,6 @@ void generate()
     //     printf("dr:%s\n",request->fr_Drawer);
     // }
 
-
-
-
     guiNotifier(0,"Generate project ...");
 
     {
@@ -928,10 +922,10 @@ void generate()
         int res = extractTemplate(ptmpl->_archivename,
                         request->fr_Drawer,
                         &sgen);
-        if(res !=0)
+        // return  text in all cases, error or ok
         {
             const char *errt = extractTextError();
-            if(errt) guiNotifier(2,errt);
+            if(errt) guiNotifier(((res !=0)?2:0),errt);
         }
     }
 

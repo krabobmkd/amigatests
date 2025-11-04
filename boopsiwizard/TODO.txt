@@ -1,0 +1,9 @@
+TODO.txt
+
+- do not export smake/make if not checked.
+- do a report window , 
+	-list files (?)
+	-tell cd to dir and type make or smake
+- recneter title (?)	
+
+
