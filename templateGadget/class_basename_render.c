@@ -120,10 +120,10 @@ ULONG BaseName_Layout(Class *C, struct Gadget *Gad, struct gpLayout *layout)
             BEVEL_Style,BVS_BUTTON,
             TAG_DONE);
         // consider the effective rectangle is inside the frame.
-        GetAttr(BEVEL_InnerTop,     gdata->Bevel, &topedge);
-        GetAttr(BEVEL_InnerLeft,    gdata->Bevel, &leftedge);
-        GetAttr(BEVEL_InnerWidth,   gdata->Bevel, &width);
-        GetAttr(BEVEL_InnerHeight,  gdata->Bevel, &height);
+        GetAttr(BEVEL_InnerTop,     gdata->Bevel,(ULONG *) &topedge);
+        GetAttr(BEVEL_InnerLeft,    gdata->Bevel,(ULONG *) &leftedge);
+        GetAttr(BEVEL_InnerWidth,   gdata->Bevel,(ULONG *) &width);
+        GetAttr(BEVEL_InnerHeight,  gdata->Bevel,(ULONG *) &height);
     }
 #endif
     gdata->_framerec.MinX = leftedge;

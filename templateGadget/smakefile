@@ -2,8 +2,8 @@
 # Update your compiler os-include and os-lib directories with recent NDK3.2 include and lib,
 # doing an overriding copy.
 # just get in the directory and use command this file with command "smake"
-
-SCOPTS = OPTIMIZE CPU=68000 NOSTKCHK STRMERGE UNSCHAR data=far PARMS=REGISTER
+# PARMS=REGISTER
+SCOPTS = OPTIMIZE CPU=68000 NOSTKCHK STRMERGE UNSCHAR data=far
 SCOPTSS = $(SCOPTS) DEFINE=BASENAME_STATICLINK=1
 LIBS = LIB:sc.lib
 

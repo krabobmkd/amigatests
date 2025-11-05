@@ -7,7 +7,7 @@
 #include <exec/types.h>
 #include <intuition/gadgetclass.h>
 #include <intuition/classes.h>
-            #include <pragmas/button_pragmas.h>
+
 #define VERSION_BASENAME 1
 #define BaseName_SUPERCLASS_ID "gadgetclass"
 
@@ -22,17 +22,18 @@
 
     // the following is to define function with implicit library call for BASENAME_GetClass().
     // note it should be in includes generated from a fd files.
-             Class * __stdargs BASENAME_GetClass( void );
+    Class * __stdargs BASENAME_GetClass( void );
+    // ... could have other functions here
 
     #ifndef _NO_INLINE
         # if defined(__GNUC__)
-
             #include <inline/macros.h>
             #define BASENAME_GetClass() LP0(0x1e, Class *, BASENAME_GetClass ,, BaseNameBase)
-        # else
-
-            // sasc
+            // ... could have other functions here
+        # endif
+        #if defined(LATTICE) || defined(__SASC) || defined(_DCC)
            #pragma libcall BaseNameBase BASENAME_GetClass 1e 00
+            // ... could have other functions here
         # endif
     #endif /* _NO_INLINE */
 

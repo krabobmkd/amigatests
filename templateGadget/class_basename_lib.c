@@ -151,7 +151,7 @@ Class * ASM GetClass(void)
 // end if shared class
 #else
 // static version:
-Class *BASENAME_GetClass(void)
+Class *BASENAME_GetClass()
 {
     return BaseNameClassPtr;
 }

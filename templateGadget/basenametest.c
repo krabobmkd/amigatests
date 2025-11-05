@@ -30,9 +30,13 @@
 
  https://wiki.amigaos.net/wiki/BOOPSI_-_Object_Oriented_Intuition
 */
+#include "compilers.h"
 
-#include <stdio.h>
-#include <string.h>
+// this is the public definition of the class we test:
+#include "class_basename.h"
+
+//#include <stdio.h>
+//#include <string.h>
 #include <stdlib.h>
 
 #include <clib/alib_protos.h>
@@ -65,10 +69,7 @@
 #include <proto/label.h>
 #include <images/label.h>
 
-#include "compilers.h"
 
-// this is the public definition of the class we test:
-#include "class_basename.h"
 
 // because original reaction macros
 // are not modern GCC compatible.
@@ -101,7 +102,7 @@ struct Library *BaseNameBase=NULL;
 
 void cleanexit(const char *pmessage)
 {
-    if(pmessage) printf("%s\n",pmessage);
+    if(pmessage) Printf("%s\n",pmessage);
     // will execute functions registered with atexit().
     // this way if C startup manages it, Ctrl-C will also close nicely.
     exit(0);
@@ -250,7 +251,7 @@ void closeAppModel(void)
     AppModelClass = NULL;
 }
 //  - - - -- - - - -  end of App modelclass management.
-
+    int BaseName_static_class_init();
 int main(int argc, char **argv)
 {
     atexit(&exitclose);
@@ -295,6 +296,7 @@ int main(int argc, char **argv)
        cleanexit("Can't open checkbox.gadget");
 
 #ifdef BASENAME_STATICLINK
+
     if(BaseName_static_class_init()) cleanexit("Can't create private class");
 #else
     if ( ! (BaseNameBase = OpenLibrary("basename.gadget",VERSION_BASENAME)))

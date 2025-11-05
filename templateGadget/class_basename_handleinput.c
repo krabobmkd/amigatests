@@ -148,7 +148,7 @@ ULONG BaseName_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
     case IECLASS_RAWMOUSE:
       {
         LONG x,y;
-        LONG r,c;
+//        LONG r,c;
 
 //        retval = GMR_MEACTIVE;
 
