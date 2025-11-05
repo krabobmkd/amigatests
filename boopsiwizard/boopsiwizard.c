@@ -39,10 +39,9 @@
 #include <proto/texteditor.h>
 #include <gadgets/texteditor.h>
 
-/*
 #include <proto/requester.h>
 #include <classes/requester.h>
-*/
+
 #include <proto/asl.h>
 #include <libraries/asl.h>
 
@@ -74,7 +73,7 @@ struct Library *LabelBase=NULL;
 struct Library *CheckBoxBase=NULL;
 struct Library *StringBase=NULL;
 struct Library *TextFieldBase=NULL;
-//struct Library *RequesterBase=NULL;
+struct Library *RequesterBase=NULL;
 
 void cleanexit(const char *pmessage)
 {
@@ -148,7 +147,11 @@ struct App
 
     Object **TemplateButtonsList;
 
+     Object *reportReq;
+
 };
+// - - - note having a private "boopsi object class and instance"
+// - - - makes it fancy to connect values and receive events.
 // Boopsi class pointer to manage our private modelclass.
 Class *AppModelClass = NULL;
 // App Model instance as a Boopsi object.
@@ -169,6 +172,7 @@ ULONG ASM SAVEDS AppModelDispatch(
         if(obj=(Object *)DoSuperMethodA(C,(Object *)obj,(Msg)M))
         {
             app=(struct App *)INST_DATA(C, obj);
+            memset(app,0,sizeof(struct App)); // absolutely *NOT* sure about this being cleaned, more secure.
             retval = (ULONG)obj;
         }
     break;
@@ -190,9 +194,7 @@ ULONG ASM SAVEDS AppModelDispatch(
             // if( sender_ID == GAD_BUTTON_GENERATE )
             // {
             //     retval = 1;
-            // }
-
-            // else // if ...other receive mamangement... else
+            // } else
             {
                 retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
             }
@@ -365,8 +367,8 @@ int main(int argc, char **argv)
     if ( ! (TextFieldBase = OpenLibrary("gadgets/texteditor.gadget",44)))
         cleanexit("Can't open texteditor.gadget");
 
-    // if ( ! (RequesterBase = OpenLibrary("requester.class",44)))
-    //     cleanexit("Can't open requester.class");
+    if ( ! (RequesterBase = OpenLibrary("requester.class",44)))
+        cleanexit("Can't open requester.class");
 
     if(!initAppModel())  cleanexit("Can't create app");
 
@@ -391,17 +393,13 @@ int main(int argc, char **argv)
                         LABEL_Text,(ULONG)"Boopsi Wizard 0.01 early beta",
                     TAG_END);
 
-
         app->horizontallayoutA =
              (Object *)NewObject( LAYOUT_GetClass(), NULL,
                     LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
                     LAYOUT_EvenSize, TRUE,
-                    LAYOUT_HorizAlignment, LALIGN_RIGHT,
+                    LAYOUT_HorizAlignment, LALIGN_CENTER,
                     LAYOUT_BevelStyle, BVS_GROUP,
                     LAYOUT_AddImage, label1,
-                  //  LAYOUT_AddChild, app->labelValues,
-                   // LAYOUT_AddChild, app->disablecheckbox,
-                  //  GA_Height,app->fontHeight,
                     TAG_DONE);
     }
 
@@ -628,7 +626,7 @@ int main(int argc, char **argv)
             LAYOUT_TopSpacing,4,
             LAYOUT_LeftSpacing,2,
             LAYOUT_RightSpacing,2,
-            LAYOUT_HorizAlignment, LALIGN_RIGHT,
+         //   LAYOUT_HorizAlignment, LALIGN_RIGHT,
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
             LAYOUT_AddChild, app->horizontallayoutA,
                 CHILD_WeightedHeight,0,
@@ -640,7 +638,17 @@ int main(int argc, char **argv)
                 CHILD_WeightedHeight,0,
             TAG_END);
         if (!app->mainvlayout) cleanexit("layout error 3");
+
+        app->reportReq = NewObject(REQUESTER_GetClass(), NULL,
+			REQ_TitleText, "Project Generated",
+			REQ_Image,REQIMAGE_INFO,
+			REQ_BodyText,"....",
+            TAG_END);
+
     } //end if screen
+
+
+
 
 
     app->app_port = CreateMsgPort();
@@ -778,6 +786,7 @@ void exitclose(void)
          * window if it is already opened and it will dispose of
          * all objects attached to it.
          */
+        if(app->reportReq) DisposeObject( app->reportReq );
         if(app->window_obj) DisposeObject(app->window_obj);
         else {
 //            // but if not attached because mid-init fail, has to be manual.
@@ -801,8 +810,9 @@ void exitclose(void)
         if(app->lockedscreen) UnlockPubScreen(0, app->lockedscreen);
 
     }
-    closeAppModel();
-//    if(RequesterBase) CloseLibrary(RequesterBase);
+
+    closeAppModel(); // thi is meant to close app implicitely, If i'm correct...
+    if(RequesterBase) CloseLibrary(RequesterBase);
     if(TextFieldBase) CloseLibrary(TextFieldBase);
     if(StringBase) CloseLibrary(StringBase);
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
@@ -884,6 +894,9 @@ void selectTemplate(int i)
 
 
 }
+
+
+
 void generate()
 {
 // printf("generate\n");
@@ -917,21 +930,40 @@ void generate()
 
     {
         sGeneration sgen;
+        sGenerationReport report={0};
         GetAttr(STRINGA_TextVal, app->projectNameString,(ULONG) &sgen.baseName);
 
         int res = extractTemplate(ptmpl->_archivename,
                         request->fr_Drawer,
-                        &sgen);
+                        &sgen,&report);
         // return  text in all cases, error or ok
         {
             const char *errt = extractTextError();
-            if(errt) guiNotifier(((res !=0)?2:0),errt);
+            if(errt) guiNotifier(((res !=0)?2:0),errt);            
         }
+        if(res ==0 &&  report.destinationDir && app->reportReq)
+        {
+            // if ok, show a report requester
+            char temp[320];
+            snprintf(temp,319,"Project was generated in directory:\n%s\n"
+                        "Everything was named accordingly.\n"
+                        "You may open a shell there and type:\n"
+                        " smake for sas-c, or make for gcc.\n"
+                        "There is also a CMakeLists.txt for cross-compilation.\n"
+                        "binaries will then be generated in build-xxx dirs.",report.destinationDir);
+            SetAttrs(app->reportReq,REQ_BodyText,(ULONG)&temp[0],TAG_END);
+
+            // SetGadgetAttrs((struct Gadget *)app->reportReq,app->win,NULL,
+            //     REQ_BodyText,(ULONG)&temp[0],TAG_END);
+
+            OpenRequester(app->reportReq,app->win);
+        }
+        CloseGenerationReport(&report);
     }
 
     FreeAslRequest(request);
 
-    return 0;
+    return ;
 }
 
 

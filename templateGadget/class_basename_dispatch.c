@@ -49,6 +49,9 @@ ULONG ASM SAVEDS BaseName_Dispatcher(
         gdata->_circleCenterX = 32767;
         gdata->_circleCenterY = 32767;
 
+        gdata->_minimalWidth = 64;
+        gdata->_minimalHeight = 64;
+
         // set gadget (super class) attributes for this instance like this:
         // (BOOL) Indicate whether gadget is part of TAB/SHIFT-TAB cycle.
         // default to false

@@ -162,7 +162,7 @@ Class *BASENAME_GetClass()
 #ifdef BASENAME_STATICLINK
 
 // just use this one once when static link
-int BaseName_static_class_init()
+int BaseNameStaticInit()
 { 
    if(!BaseName_OpenLibs_Dependencies()) return 1;
     if(BaseNameClassPtr=MakeClass(NULL,BaseNameSuperClassID,0,sizeof(BaseName),0))
@@ -175,7 +175,7 @@ int BaseName_static_class_init()
     return 1;
 }
 
-void BaseName_static_class_close()
+void BaseNameStaticClose()
 {
     BaseName_CloseLibs_Dependencies();
     if(BaseNameClassPtr)

@@ -4,6 +4,8 @@ TODO.txt
 - do a report window , 
 	-list files (?)
 	-tell cd to dir and type make or smake
-- recneter title (?)	
+- recenter title (?)
+
+- having not phxass -> can't. sasc c uses sasc asm.
 
 

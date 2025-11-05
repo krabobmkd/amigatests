@@ -36,6 +36,7 @@ typedef struct _sWizTemplate
 } sWizTemplate;
 
 
+
 typedef void (*template_notifier)(int ilog,const char *log);
 
 void initTemplates(template_notifier n);
@@ -43,17 +44,31 @@ void initTemplates(template_notifier n);
 sWizTemplate *getTemplates();
 int getNbTemplates();
 
+// parameters for generation, could evolve with settings from json and interface...
 typedef struct _Generation
 {
     const char *baseName;
 
 } sGeneration;
 
+// return information about generated project, when succeed.
+// must be close with CloseGenerationReport()
+typedef struct _GenerationReport
+{
+    const char *destinationDir;
+
+} sGenerationReport;
+
+
 int extractTemplate(const char *templateArchive,
                     const char *destDir,
-                     sGeneration *pgen);
+                     sGeneration *pgen,
+                     sGenerationReport *report);
 // if return !=0
 const char *extractTextError();
+// to be used after extraction if report was passed.
+void CloseGenerationReport(sGenerationReport *report);
+
 
 #endif
 

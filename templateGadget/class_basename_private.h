@@ -38,6 +38,10 @@ typedef struct IBaseName {
     ULONG _MouseMode;
     ULONG _EditMode;
 
+    // would have minimal size here.
+    UWORD _minimalWidth,_minimalHeight;
+
+
     struct Rectangle _framerec;
 #ifdef USE_REGION_CLIPPING
     struct Region *_clipRegion;

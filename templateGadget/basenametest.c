@@ -251,7 +251,7 @@ void closeAppModel(void)
     AppModelClass = NULL;
 }
 //  - - - -- - - - -  end of App modelclass management.
-    int BaseName_static_class_init();
+
 int main(int argc, char **argv)
 {
     atexit(&exitclose);
@@ -297,7 +297,7 @@ int main(int argc, char **argv)
 
 #ifdef BASENAME_STATICLINK
 
-    if(BaseName_static_class_init()) cleanexit("Can't create private class");
+    if(BaseNameStaticInit()) cleanexit("Can't create private class");
 #else
     if ( ! (BaseNameBase = OpenLibrary("basename.gadget",VERSION_BASENAME)))
         cleanexit("Can't open basename.gadget");
@@ -602,7 +602,7 @@ void exitclose(void)
 #ifndef BASENAME_STATICLINK
     if(BaseNameBase) CloseLibrary(BaseNameBase);
 #else
-    BaseName_static_class_close();
+    BaseNameStaticClose();
 #endif
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
     if(LabelBase) CloseLibrary(LabelBase);

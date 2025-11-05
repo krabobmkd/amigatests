@@ -55,12 +55,12 @@ ULONG BaseName_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
   switch(D->gpd_Which)
   {
     case GDOMAIN_NOMINAL:
-//      if(gdata)
-//      {
-//        D->gpd_Domain.Width =sqrt(gdata->Pens) * 12 + 8;
-//        D->gpd_Domain.Height=sqrt(gdata->Pens) * 12 + 8;
-//      }
-//      else
+     // if(gdata)
+     // {
+     //   D->gpd_Domain.Width =gdata->_minimalWidth;
+     //   D->gpd_Domain.Height=gdata->_minimalHeight;
+     // }
+     // else
       {
         D->gpd_Domain.Width=100;
         D->gpd_Domain.Height=50;
@@ -74,12 +74,12 @@ ULONG BaseName_Domain(Class *C, struct Gadget *Gad, struct gpDomain *D)
 
     case GDOMAIN_MINIMUM:
     default:
-//      if(gdata)
-//      {
-//        D->gpd_Domain.Width =sqrt(gdata->Pens) * 8 + 8;
-//        D->gpd_Domain.Height=sqrt(gdata->Pens) * 8 + 8;
-//      }
-//      else
+     if(gdata)
+     {
+       D->gpd_Domain.Width =gdata->_minimalWidth; // sqrt(gdata->Pens) * 8 + 8;
+       D->gpd_Domain.Height=gdata->_minimalHeight; // sqrt(gdata->Pens) * 8 + 8;
+     }
+     else
       {
         D->gpd_Domain.Width=  50;
         D->gpd_Domain.Height= 50;

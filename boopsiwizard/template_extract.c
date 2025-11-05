@@ -259,7 +259,8 @@ int replaceWrite(const char *originalbin, ULONG origbsize,
 
 int extractTemplate(const char *templateArchive,
                     const char *destDir,
-                     sGeneration *pgen)
+                     sGeneration *pgen,
+                     sGenerationReport *report)
 {
 //    printf("extractTemplate:%s %s %s\n",templateArchive,destDir,pgen->baseName);
     if(exitclset==0) {
@@ -343,6 +344,31 @@ int extractTemplate(const char *templateArchive,
     if(rr==0)
     {
          errorstring = "Project created !";
+         if(report)
+         {
+               // assume base dir
+                ULONG fullbase_l = strlen(destDir)+2+strlen(upName);
+               report->destinationDir = AllocVec(fullbase_l,0);
+               char *destbase = report->destinationDir;
+                if(destbase)
+                {
+                    *destbase=0;
+                    strcat(destbase,destDir);
+                    // if dvice: no need to /
+                    if(destbase[strlen(destbase)-1]!= ':')  strcat(destbase,"/");
+                    strcat(destbase,upName);
+                }
+
+         }
     }
     return rr;
+}
+// to be used after extraction if report was passed.
+void CloseGenerationReport(sGenerationReport *report)
+{
+    if(report && report->destinationDir)
+    {
+        FreeVec(report->destinationDir);
+        report->destinationDir = NULL;
+    }
 }

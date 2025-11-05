@@ -63,9 +63,9 @@ ULONG BaseName_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
 //      KP("RAW KEY CODE - %lx %8lx\n",ie->ie_Code,ie->ie_Qualifier);
 //        gdata->gd_MouseMode=0;
 
-      switch(ie->ie_Code)
+      /*switch(ie->ie_Code)
       {
-      /*
+
         case 0x4c: // UP
           {
             LONG t;
@@ -142,18 +142,19 @@ ULONG BaseName_HandleInput(Class *C, struct Gadget *Gad, struct gpInput *Input)
             }
           }
           break;
-          */
+
       }  // end ie_code switch
+       */
       break;
     case IECLASS_RAWMOUSE:
       {
-        LONG x,y;
+//        LONG x,y;
 //        LONG r,c;
 
 //        retval = GMR_MEACTIVE;
 
-        x=(Input->gpi_Mouse).X+Gad->LeftEdge;
-        y=(Input->gpi_Mouse).Y+Gad->TopEdge;
+        // x=(Input->gpi_Mouse).X+Gad->LeftEdge;
+        // y=(Input->gpi_Mouse).Y+Gad->TopEdge;
 
 //          DKP("RawMouse %ld %ld\n", x, y);
 /*        if(gdata->MouseMode)

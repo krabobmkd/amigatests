@@ -12,8 +12,8 @@
 #define BaseName_SUPERCLASS_ID "gadgetclass"
 
 #ifdef BASENAME_STATICLINK
-    extern int BaseName_static_class_init();
-    extern void BaseName_static_class_close();
+    extern int BaseNameStaticInit();
+    extern void BaseNameStaticClose();
     extern Class *BASENAME_GetClass();
 #else
     // BaseName_CLASS_ID is the identifier for this class, when shared.

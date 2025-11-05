@@ -31,7 +31,6 @@ add_executable(BoopsiWizard
 		templates.h
 		templates.c
 		template_extract.c
-		templates/bgadget_template.json
 		${ZLIBPATH}/contrib/minizip/unzip.c
 		${ZLIBPATH}/contrib/minizip/unzip.h
 		${ZLIBPATH}/contrib/minizip/ioapi.c

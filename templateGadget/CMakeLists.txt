@@ -40,7 +40,6 @@ add_executable(basename.gadget
 		minialib.h
 		class_basename.h
 		class_basename_private.h
-
 		classinit.s
 		class_basename_lib.c
 		class_basename_dispatch.c
@@ -48,6 +47,8 @@ add_executable(basename.gadget
 		class_basename_render.c
 		class_basename_handleinput.c
 		)
+
+
 # important: gcc6.5 in 68000 modes doesn't manage (.w * .w)=.l mulu.w , it wants its emulated "muls.l" lib link for this.
 # (does not happen with 68020 which as native muls.l)
 #  so with need libc to link this muls, also it links alib things it seems (??) which is good because
