@@ -20,6 +20,11 @@ typedef struct _sWTmpl_pref_bool
 
 } sWTmpl_pref_bool;
 
+typedef struct _sStringArray
+{
+    int _nb;
+    char **_p;
+} sStringArray;
 
 /** one instance per known template, described in json */
 typedef struct _sWizTemplate
@@ -32,6 +37,7 @@ typedef struct _sWizTemplate
     char *_comment;
     // list of prefs
     sWTmpl_pref *_firstPRef;
+    sStringArray _renames;
 
 } sWizTemplate;
 
@@ -43,6 +49,8 @@ void initTemplates(template_notifier n);
 
 sWizTemplate *getTemplates();
 int getNbTemplates();
+
+// - - - - - - - -  - --
 
 // parameters for generation, could evolve with settings from json and interface...
 typedef struct _Generation
@@ -60,10 +68,11 @@ typedef struct _GenerationReport
 } sGenerationReport;
 
 
-int extractTemplate(const char *templateArchive,
+int extractTemplate(sWizTemplate *ptmpl,
+                    const char *templateArchive,
                     const char *destDir,
-                     sGeneration *pgen,
-                     sGenerationReport *report);
+                    sGeneration *pgen,
+                    sGenerationReport *report);
 // if return !=0
 const char *extractTextError();
 // to be used after extraction if report was passed.

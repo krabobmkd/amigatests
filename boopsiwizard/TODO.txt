@@ -1,11 +1,14 @@
 TODO.txt
 
-- do not export smake/make if not checked.
-- do a report window , 
-	-list files (?)
-	-tell cd to dir and type make or smake
-- recenter title (?)
+O do not export smake/make if not checked.
+X do a report window ,
+	O list files (?)
+	X tell cd to dir and type make or smake
 
-- having not phxass -> can't. sasc c uses sasc asm.
+O  extract should recurse zip dirs
+O have rename files list in .json -> rename or copy.
+
+O having not phxass -> can't. sasc c uses sasc asm.
+ -> try harder.
 
 

@@ -19,16 +19,12 @@ static sWizTemplate *gFirstTemplate=NULL;
 static int nbTemplates = 0;
 int getNbTemplates(){ return nbTemplates;  }
 
+
 // copy json string to our struct, using AllocVec
-static inline void getJsString(char **p, cJSON *jsobj, const char *key )
+static void getJsString(char **p, cJSON *pm)
 {
-    if(*p != NULL) {
-        FreeVec(*p);
-        *p = NULL;
-    }
-    if(!jsobj) return;
-    cJSON *pm = cJSON_GetObjectItem(jsobj,key);
-    if(!pm) return;
+    if(!pm || !p) return;
+    if(*p) FreeVec(*p);
     if( !cJSON_IsString(pm)) return;
 
     const char *ps = cJSON_GetStringValue(pm);
@@ -41,6 +37,65 @@ static inline void getJsString(char **p, cJSON *jsobj, const char *key )
     (*p)[l]=0;
 }
 
+// copy json string to our struct, using AllocVec
+static void getJsStringInObj(char **p, cJSON *jsobj, const char *key )
+{
+    if(*p != NULL) {
+        FreeVec(*p);
+        *p = NULL;
+    }
+    if(!jsobj) return;
+    cJSON *pm = cJSON_GetObjectItem(jsobj,key);
+    if(!pm) return;   
+    getJsString(p,pm);
+}
+static void closeStringArray( sStringArray *p)
+{
+    if(!p) return;
+    if(p->_p == NULL) return;
+    for(int i=0;i<p->_nb;i++)
+    {
+        if(p->_p[i])
+        {
+         //printf("subclose:%s\n",p->_p[i]);
+         FreeVec(p->_p[i]);
+        }
+    }
+    FreeVec(p->_p);
+    p->_p = NULL;
+}
+static void getJsStringArray( sStringArray *p, cJSON *jsobj, const char *key )
+{
+    if(!p) return;
+    if(p->_p != NULL) {
+        closeStringArray(p);
+    }
+    if(!jsobj) return;
+    cJSON *pm = cJSON_GetObjectItem(jsobj,key);
+    if(!pm) return;
+    if( !cJSON_IsArray(pm)) return;
+
+    int nb = cJSON_GetArraySize(pm);
+    if(nb<=0)
+    {
+        p->_nb = 0;
+        return;
+    }
+    p->_nb = nb;
+    p->_p = AllocVec(sizeof(char *)*nb,MEMF_CLEAR);
+    if(!p->_p)
+    {   //todo tells it's alloc fault.
+     p->_nb = 0;
+     return;
+    }
+    for(int i=0;i<nb;i++)
+    {
+        cJSON *psub = cJSON_GetArrayItem(pm,i);
+        if(!psub) continue;
+        getJsString(p->_p+i,psub);
+    }
+
+}
 
 static int scanTemplates(BPTR lock, struct FileInfoBlock*fib)
 {
@@ -108,11 +163,13 @@ by default but can be changed (globally) with cJSON_InitHooks.
                             ntmpl->_pNext = gFirstTemplate;
                             gFirstTemplate = ntmpl;
 
-                            getJsString(&(ntmpl->_displayName),jstemplate,"displayname");
-                            getJsString(&(ntmpl->_versionstring),jstemplate,"versionstr");
-                            getJsString(&(ntmpl->_archivename),jstemplate,"archive");
-                            getJsString(&(ntmpl->_defaultname),jstemplate,"defaultname");
-                            getJsString(&(ntmpl->_comment),jstemplate,"comment");
+                            getJsStringInObj(&(ntmpl->_displayName),jstemplate,"displayname");
+                            getJsStringInObj(&(ntmpl->_versionstring),jstemplate,"versionstr");
+                            getJsStringInObj(&(ntmpl->_archivename),jstemplate,"archive");
+                            getJsStringInObj(&(ntmpl->_defaultname),jstemplate,"defaultname");
+                            getJsStringInObj(&(ntmpl->_comment),jstemplate,"comment");
+
+                            getJsStringArray(&(ntmpl->_renames),jstemplate,"renames");
 
                             //if(ntmpl->_comment) printf(ntmpl->_comment);
                             nbTemplates++;
@@ -139,6 +196,9 @@ by default but can be changed (globally) with cJSON_InitHooks.
     return nbTemplates;
 }
 
+
+
+
 static void closeTemplates()
 {
     sWizTemplate *pt = gFirstTemplate;
@@ -150,6 +210,8 @@ static void closeTemplates()
         if(pt->_archivename) FreeVec(pt->_archivename);
         if(pt->_defaultname) FreeVec(pt->_defaultname);
         if(pt->_comment) FreeVec(pt->_comment);
+
+        if(pt->_renames._nb>0) closeStringArray(&pt->_renames);
 
         FreeVec(pt);
         pt = ptnext;

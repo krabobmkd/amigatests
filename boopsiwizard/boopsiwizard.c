@@ -643,6 +643,7 @@ int main(int argc, char **argv)
 			REQ_TitleText, "Project Generated",
 			REQ_Image,REQIMAGE_INFO,
 			REQ_BodyText,"....",
+			REQ_GadgetText,(ULONG)"_Ok", //
             TAG_END);
 
     } //end if screen
@@ -933,7 +934,9 @@ void generate()
         sGenerationReport report={0};
         GetAttr(STRINGA_TextVal, app->projectNameString,(ULONG) &sgen.baseName);
 
-        int res = extractTemplate(ptmpl->_archivename,
+        int res = extractTemplate(
+                        ptmpl,
+                        ptmpl->_archivename,
                         request->fr_Drawer,
                         &sgen,&report);
         // return  text in all cases, error or ok
@@ -944,8 +947,8 @@ void generate()
         if(res ==0 &&  report.destinationDir && app->reportReq)
         {
             // if ok, show a report requester
-            char temp[320];
-            snprintf(temp,319,"Project was generated in directory:\n%s\n"
+            char temp[512];
+            snprintf(temp,511,"Project was generated in directory:\n%s\n"
                         "Everything was named accordingly.\n"
                         "You may open a shell there and type:\n"
                         " smake for sas-c, or make for gcc.\n"

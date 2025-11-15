@@ -122,7 +122,20 @@ static int assumeDirectory(const char *fullpath)
     }
     return PATH_NOT_FOUND;
 }
+// to be used before creating a file in a possibly non exitant dir.
+static int assumeDirectoryBeforeFile(const char *fullpath)
+{
+    // look previous createdir
+    char *lastsep = strrchr(fullpath,'/');
+    if(!lastsep) return PATH_IS_DIRECTORY; // would fit dev:file, so ok.
+    // if here more lilkely: dev:dir/file
 
+    *lastsep = 0;
+    int subtype = assumeDirectory(fullpath); // switch to dir recurse
+    *lastsep = '/';
+    if(subtype != PATH_IS_DIRECTORY) return PATH_NOT_FOUND;
+    return PATH_IS_DIRECTORY;
+}
 typedef struct {
  const char *key;
  const char *repl;
@@ -157,6 +170,7 @@ void replacefilename(char *p,const char *orig,sReplace *replacers)
 }
 
 
+
 static void replacewriteFh(FILE *fhw,const char *orig,ULONG origbsize,sReplace *replacers)
 {
     ULONG borigdone =0;
@@ -186,12 +200,22 @@ static void replacewriteFh(FILE *fhw,const char *orig,ULONG origbsize,sReplace *
         }
     }
 }
+int EndsWith(const char *str, const char *suffix)
+{
+    if (!str || !suffix)
+        return 0;
+    size_t lenstr = strlen(str);
+    size_t lensuffix = strlen(suffix);
+    if (lensuffix >  lenstr)
+        return 0;
+    return( strncasecmp(str + lenstr - lensuffix, suffix, lensuffix) == 0);
+}
 
 
 // this is the whole effective part:
 // file names and uppercase/lower cases are all replaced while writting
 int replaceWrite(const char *originalbin, ULONG origbsize,
-                 const char *origfilepath, const char *destbase)
+                 const char *origfilepath, const char *destbase,sWizTemplate *tmpl)
 {
     // assume base dir
     ULONG fullbase_l = strlen(destbase)+2+strlen(upName);
@@ -234,6 +258,8 @@ int replaceWrite(const char *originalbin, ULONG origbsize,
             strcat(pfinalnamepath,fulldestpath);
             strcat(pfinalnamepath,"/");
             replacefilename(pfinalnamepath+strlen(pfinalnamepath),origfilepath,replacers);
+            assumeDirectoryBeforeFile(pfinalnamepath);
+
             FILE *fhw = Open(pfinalnamepath,MODE_NEWFILE);
             if(!fhw)
             {
@@ -241,7 +267,21 @@ int replaceWrite(const char *originalbin, ULONG origbsize,
                 res = 1;
             } else
             {
-                replacewriteFh(fhw,originalbin,origbsize,replacers);
+                int doReplaceBin = 0;
+                // check if bin have to be text-replaced by testing end names
+                for( int j=0 ; j<tmpl->_renames._nb ; j++ )
+                {
+                    if(EndsWith(pfinalnamepath,tmpl->_renames._p[j])) {
+                        doReplaceBin = 1;
+                        break;
+                    }
+                }
+
+                if(doReplaceBin) replacewriteFh(fhw,originalbin,origbsize,replacers);
+                else
+                {
+                    Write(fhw,originalbin,origbsize); // direct bin copy.
+                }
                 Close(fhw);
             }
             FreeVec(pfinalnamepath);
@@ -257,10 +297,13 @@ int replaceWrite(const char *originalbin, ULONG origbsize,
     return res;
 }
 
-int extractTemplate(const char *templateArchive,
-                    const char *destDir,
-                     sGeneration *pgen,
-                     sGenerationReport *report)
+
+int extractTemplate(
+            sWizTemplate *ptmpl,
+            const char *templateArchive,
+            const char *destDir,
+            sGeneration *pgen,
+            sGenerationReport *report)
 {
 //    printf("extractTemplate:%s %s %s\n",templateArchive,destDir,pgen->baseName);
     if(exitclset==0) {
@@ -330,7 +373,8 @@ int extractTemplate(const char *templateArchive,
                 {
                     // extracted !
                     //printf("looks extracted ok!\n");
-                    rr |= replaceWrite(f, nbdone,tfilename,destDir); // !=0 if any error
+
+                    rr |= replaceWrite(f, nbdone,tfilename,destDir,ptmpl); // !=0 if any error
                 }
                 FreeVec(f);
             }
@@ -349,7 +393,7 @@ int extractTemplate(const char *templateArchive,
                // assume base dir
                 ULONG fullbase_l = strlen(destDir)+2+strlen(upName);
                report->destinationDir = AllocVec(fullbase_l,0);
-               char *destbase = report->destinationDir;
+               char *destbase = (char *)report->destinationDir;
                 if(destbase)
                 {
                     *destbase=0;
