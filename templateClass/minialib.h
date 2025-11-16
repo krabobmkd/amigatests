@@ -52,7 +52,7 @@ AINLINE ULONG DoSuperMethodA( struct IClass *cl, Object *obj, Msg message ) {
 AINLINE ULONG DoSuperMethod( struct IClass *cl, Object *obj, ULONG methodID, ... ) {
    return CallHookPkt((struct Hook *)cl->cl_Super, obj, (APTR)&methodID);
 }
-
+// assume cl is class of obj
 AINLINE ULONG SetSuperAttrs( struct IClass *cl, Object *obj, ULONG tag1, ... ) {
     struct opSet ops, *msg = &ops;
 
@@ -62,5 +62,19 @@ AINLINE ULONG SetSuperAttrs( struct IClass *cl, Object *obj, ULONG tag1, ... ) {
 
     return DoSuperMethodA(cl, obj, (Msg)msg);
 }
+
+/*Boopsi support function that invokes the supplied message on the specified object,
+ *  as though it were the specified class.
+ */
+ AINLINE ULONG CoerceMethodA( struct IClass *cl, Object *obj, Msg message )
+ {
+    if(!cl || !obj) return NULL;
+    return CallHookPkt((struct Hook *) cl, obj, message);
+ }
+ AINLINE ULONG CoerceMethod( struct IClass *cl, Object *obj, ULONG methodID, ... )
+ {
+    if(!cl || !obj) return NULL;
+    return CallHookPkt((struct Hook *)cl, obj, (APTR)&methodID);
+ }
 
 #endif
