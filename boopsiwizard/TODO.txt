@@ -5,8 +5,10 @@ X do a report window ,
 	O list files (?)
 	X tell cd to dir and type make or smake
 
-O  extract should recurse zip dirs
-O have rename files list in .json -> rename or copy.
+X  extract should recurse zip dirs
+X have rename files list in .json -> rename or copy.
+
+O have a simpleclass template
 
 O having not phxass -> can't. sasc c uses sasc asm.
  -> try harder.

@@ -1,4 +1,4 @@
-ZIPNAME=circlegadget
+ZIPNAME=simpleclass
 zip -u ${ZIPNAME}.zip *.c
 zip -u ${ZIPNAME}.zip *.h
 zip -u ${ZIPNAME}.zip *.s

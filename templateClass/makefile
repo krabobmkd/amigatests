@@ -13,26 +13,22 @@ ASMFLAGS = I=include:
 CFLAGS = -m68000 -Os -noixemul
 
 BINARIES = \
- $(BUILDDIR)/basename.gadget\
+ $(BUILDDIR)/basename.class\
  $(BUILDDIR)/basenameTest\
  $(BUILDDIR)Static/basenameTest_static
 
 HEADERS = class_basename.h class_basename_private.h  minialib.h
 
-GADGETOBJS = \
+MODELCLASSOBJS = \
  $(BUILDLIBDIR)/classinit.s.o \
  $(BUILDLIBDIR)/class_basename_lib.c.o \
  $(BUILDLIBDIR)/class_basename_dispatch.c.o \
- $(BUILDLIBDIR)/class_basename_attribs.c.o \
- $(BUILDLIBDIR)/class_basename_render.c.o \
- $(BUILDLIBDIR)/class_basename_handleinput.c.o
+ $(BUILDLIBDIR)/class_basename_attribs.c.o
 
-GADGETOBJSSTATIC = \
+MODELCLASSOBJSSTATIC = \
  $(BUILDDIR)Static/class_basename_lib.c.o \
  $(BUILDDIR)Static/class_basename_dispatch.c.o \
- $(BUILDDIR)Static/class_basename_attribs.c.o \
- $(BUILDDIR)Static/class_basename_render.c.o \
- $(BUILDDIR)Static/class_basename_handleinput.c.o
+ $(BUILDDIR)Static/class_basename_attribs.c.o
 
 all: $(BINARIES)
 
@@ -67,12 +63,12 @@ $(BUILDLIBDIR)/%.s.o: %.s $(BUILDLIBDIR) $(HEADERS)
 	phxass $< TO $@ $(ASMFLAGS)
 	#gcc assembler will not make it.
 	#as $< -o $@ -m68000
-# - - - - - - - - - for .gadget
+# - - - - - - - - - for .class
 
-$(BUILDDIR)/basename.gadget: $(GADGETOBJS)
-	$(CC) -o $@ $(GADGETOBJS) $(CFLAGS) -ffreestanding -nostartfiles  -Wl,-e,__start
+$(BUILDDIR)/basename.class: $(MODELCLASSOBJS)
+	$(CC) -o $@ $(MODELCLASSOBJS) $(CFLAGS) -ffreestanding -nostartfiles  -Wl,-e,__start
 
-# - - - - - - - - - executable to test gadget
+# - - - - - - - - - executable to test model class
 
 $(BUILDDIR)/basenameTest: $(BUILDEXEDIR)/basenametest.c.o
 	$(CC) -o $@ $(CFLAGS) $(BUILDEXEDIR)/basenametest.c.o  -s
@@ -80,8 +76,8 @@ $(BUILDDIR)/basenameTest: $(BUILDEXEDIR)/basenametest.c.o
 
 # - - - - - - - - -  static test case executable
 
-$(BUILDDIR)Static/basenameTest_static: $(BUILDDIR)Static $(BUILDDIR)Static/basenametest.c.o $(GADGETOBJSSTATIC)
-	$(CC) -o $@ $(CFLAGS) $(BUILDDIR)Static/basenametest.c.o $(GADGETOBJSSTATIC)
+$(BUILDDIR)Static/basenameTest_static: $(BUILDDIR)Static $(BUILDDIR)Static/basenametest.c.o $(MODELCLASSOBJSSTATIC)
+	$(CC) -o $@ $(CFLAGS) $(BUILDDIR)Static/basenametest.c.o $(MODELCLASSOBJSSTATIC)
 
 
 # - - - - - - -

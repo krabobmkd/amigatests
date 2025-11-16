@@ -1,6 +1,5 @@
 /** little boopsi/reaction example
- * that uses the gadget to test,
- * in a layout, with a few buttons interaction.
+ * that uses and test an external boopsi class.
  * This will use a static link of the class definition
  * when XXXXX_STATICLINK is defined,
  * (which is usefull for debugging)
@@ -66,10 +65,11 @@
 #include <proto/checkbox.h>
 #include <gadgets/checkbox.h>
 
+#include <proto/scroller.h>
+#include <gadgets/scroller.h>
+
 #include <proto/label.h>
 #include <images/label.h>
-
-
 
 // because original reaction macros
 // are not modern GCC compatible.
@@ -94,6 +94,7 @@ struct Library *BitMapBase=NULL;
 struct Library *ButtonBase=NULL;
 struct Library *LabelBase=NULL;
 struct Library *CheckBoxBase=NULL;
+struct Library *ScrollerBase=NULL;
 
 #ifndef BASENAME_STATICLINK
 struct Library *BaseNameBase=NULL;
@@ -121,9 +122,9 @@ typedef union ModelMsgUnion
 
 /* Gadget action IDs, just to demonstrate some interactions
  */
-#define GAD_BUTTON_RECENTER 1
-#define GAD_BASENAME_TOTEST 2
-#define GAD_DISABLECHECKBOX 3
+#define GAD_SCROLLER_VALUE 1
+// #define GAD_BASENAME_TOTEST 2
+
 // all app related variables are here:
 // also we register that struct as a BOOPSI model,
 // which is useful to receive notifications
@@ -142,14 +143,20 @@ struct App
 
     ULONG   fontHeight; // some stat to size according to current font.
 
+    // - - - the model we actually test.
+    Object *testBaseName;
+
+    // - - -  the interface gadgets
     Object *mainlayout;
         Object *horizontallayout;
-            Object *testbt;
+        Object *slider;
+            //Object *testbt;
             Object *kbdview;
         Object *bottombarlayout;
             Object *label1;
+            Object *label2;
             Object *labelValues;
-            Object *disablecheckbox;
+           // Object *disablecheckbox;
 };
 // Boopsi class pointer to manage our private modelclass.
 Class *AppModelClass = NULL;
@@ -172,49 +179,71 @@ ULONG ASM SAVEDS AppModelDispatch(
         {
             app=INST_DATA(C, obj);
             retval = (ULONG)obj;
+
+            // we can create our test object instance here:
+            app->testBaseName = NewObject(BASENAME_GetClass(),NULL,
+                                            ICA_TARGET, /*AppInstance*/obj, // makes main model receive message for BaseName tested model.
+                                            BASENAME_Value,1338, // start value
+                                            TAG_END);
+            if(!app->testBaseName) return 0;
+
         }
     break;
     case OM_DISPOSE:
+        if(app->testBaseName) DisposeObject(app->testBaseName);
+        app->testBaseName = NULL;
+
         retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
       break;
     case OM_UPDATE:
         {
             struct TagItem *ptag;
             // here receive events from gadgets as target.
-            ULONG sender_ID=0;
-            if((ptag = FindTagItem( GA_ID,M->opUpdate.opu_AttrList ))!=NULL) sender_ID = ptag->ti_Data;
+            // ULONG sender_ID=0;
+            // if((ptag = FindTagItem( GA_ID,M->opUpdate.opu_AttrList ))!=NULL) sender_ID = ptag->ti_Data;
 
-            // our gadget is notifying new clicked coordinates!
-            if( sender_ID == GAD_BASENAME_TOTEST )
-            {   // table used as parameter for the button internal sprintf() formating
-                LONG centerXY[2];
-                if((ptag = FindTagItem( BASENAME_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
-                    centerXY[0] = ((UWORD)ptag->ti_Data * 100)>>16; // get percent
-                if((ptag = FindTagItem( BASENAME_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
-                    centerXY[1] = ((UWORD)ptag->ti_Data * 100)>>16;
 
-                if(app->labelValues)
-                {
-                    // display coords in button label with formatting:
-                    SetGadgetAttrs((struct Gadget *)app->labelValues,app->win,NULL,
-                        GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
-                        BUTTON_VarArgs,(ULONG) &centerXY[0],
-                        TAG_END);
-                }
-                retval = 1;
-            } else if(sender_ID == GAD_DISABLECHECKBOX)
-            {   // also works, but would be activated for all attribs sent:
-                //ULONG v;
-                //GetAttr(GA_SELECTED, app->disablecheckbox, &v);
-                if((ptag = FindTagItem( GA_SELECTED,M->opUpdate.opu_AttrList ))!=NULL)
-                {   // checkbox sent new Disable value.
-                    SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,ptag->ti_Data,TAG_END);
-                }
-            }
-            else // if ...other receive mamangement... else
-            {
+             if((ptag = FindTagItem( BASENAME_Value,M->opUpdate.opu_AttrList ))!=NULL)
+             {
+                ULONG basenamevalue=ptag->ti_Data;
+                SetGadgetAttrs((struct Gadget *)app->labelValues,app->win,NULL,
+                    GA_Text,(ULONG)"%ld", // in amiga API %d is for short and %ld for longs.
+                    BUTTON_VarArgs,(ULONG) &basenamevalue,
+                    TAG_END);
+             }
+
+
+            // // our gadget is notifying new clicked coordinates!
+            // if( sender_ID == GAD_BASENAME_TOTEST )
+            // {   // table used as parameter for the button internal sprintf() formating
+            //     LONG centerXY[2];
+            //     if((ptag = FindTagItem( BASENAME_CenterX,M->opUpdate.opu_AttrList ))!=NULL)
+            //         centerXY[0] = ((UWORD)ptag->ti_Data * 100)>>16; // get percent
+            //     if((ptag = FindTagItem( BASENAME_CenterY,M->opUpdate.opu_AttrList ))!=NULL)
+            //         centerXY[1] = ((UWORD)ptag->ti_Data * 100)>>16;
+
+            //     if(app->labelValues)
+            //     {
+            //         // display coords in button label with formatting:
+            //         SetGadgetAttrs((struct Gadget *)app->labelValues,app->win,NULL,
+            //             GA_Text,(ULONG)"X: %ld %% Y: %ld %%", // in amiga API %d is for short and %ld for longs.
+            //             BUTTON_VarArgs,(ULONG) &centerXY[0],
+            //             TAG_END);
+            //     }
+            //     retval = 1;
+            // } else if(sender_ID == GAD_DISABLECHECKBOX)
+            // {   // also works, but would be activated for all attribs sent:
+            //     //ULONG v;
+            //     //GetAttr(GA_SELECTED, app->disablecheckbox, &v);
+            //     if((ptag = FindTagItem( GA_SELECTED,M->opUpdate.opu_AttrList ))!=NULL)
+            //     {   // checkbox sent new Disable value.
+            //         SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL, GA_DISABLED,ptag->ti_Data,TAG_END);
+            //     }
+            // }
+            // else // if ...other receive mamangement... else
+            // {
                 retval=DoSuperMethodA(C,(Object *)obj,(Msg)M);
-            }
+            //}
         }
         break;
     default:
@@ -246,6 +275,12 @@ void closeAppModel(void)
     AppModelClass = NULL;
 }
 //  - - - -- - - - -  end of App modelclass management.
+
+struct TagItem map_slider_to_basename_value[] =
+{
+        { SCROLLER_Top, BASENAME_Value }, // slider atr
+        { TAG_END }
+};
 
 int main(int argc, char **argv)
 {
@@ -290,12 +325,16 @@ int main(int argc, char **argv)
    if ( ! (CheckBoxBase = OpenLibrary("gadgets/checkbox.gadget",44)))
        cleanexit("Can't open checkbox.gadget");
 
+   if ( ! (ScrollerBase = OpenLibrary("gadgets/scroller.gadget",44)))
+       cleanexit("Can't open scroller.gadget");
+
+
 #ifdef BASENAME_STATICLINK
 
     if(BaseNameStaticInit()) cleanexit("Can't create private class");
 #else
-    if ( ! (BaseNameBase = OpenLibrary("basename.gadget",VERSION_BASENAME)))
-        cleanexit("Can't open basename.gadget");
+    if ( ! (BaseNameBase = OpenLibrary("basename.class",VERSION_BASENAME)))
+        cleanexit("Can't open basename.class");
 #endif
 
 
@@ -312,48 +351,45 @@ int main(int argc, char **argv)
     app->fontHeight = 8+4; // default;
     if(app->drawInfo && app->drawInfo->dri_Font) app->fontHeight =app->drawInfo->dri_Font->tf_YSize + 4;
 
-    app->testbt = (Object *)NewObject( NULL, "button.gadget",
+    app->slider = (Object *)NewObject( SCROLLER_GetClass(), NULL,
                                     GA_DrawInfo, app->drawInfo,
-                              //      GA_TextAttr, &garnet16,
-                                    GA_ID,GAD_BUTTON_RECENTER,
-                                    GA_Text, "R_ecenter",
+                                    //GA_ID,GAD_SCROLLER_VALUE,
                                     GA_RelVerify, TRUE, // needed
+                                SCROLLER_Top, 0,
+                                SCROLLER_Total, 90,
+                                SCROLLER_Visible, 10,
+                                SCROLLER_Orientation, FREEHORIZ,
+                                SCROLLER_Stretch,TRUE,
+                                ICA_TARGET,app->testBaseName,
+                                ICA_MAP,(ULONG)map_slider_to_basename_value,
                                 TAG_END);
 
-
-    if(!app->testbt) cleanexit("Can't button");
-
-
-    // with BASENAME_STATICLINK, BASENAME_GetClass() is a function,
-    //  else it is a vector function from a shared class library.
-    app->kbdview = NewObject(BASENAME_GetClass(), NULL,
-        GA_DrawInfo, app->drawInfo,
-        GA_ID,      GAD_BASENAME_TOTEST, // Gadget ID assigned by the application, needed to sort notifies.
-        ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-            TAG_END);
-
-
-    if(!app->kbdview) cleanexit("Can't create kbdview");
+    if(!app->slider) cleanexit("Can't do Slider");
 
     app->horizontallayout = (Object *)NewObject( LAYOUT_GetClass(), NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
                 LAYOUT_EvenSize, TRUE,
                 LAYOUT_HorizAlignment, LALIGN_RIGHT,
                // LAYOUT_SpaceInner, FALSE,
-                LAYOUT_AddChild, app->testbt,
-                LAYOUT_AddChild, app->kbdview,
+                LAYOUT_AddChild, app->slider,
+                // add other here
                 TAG_DONE);
 
     if(!app->horizontallayout) cleanexit("Can't layout 1");
-
-
 
  app->label1 = (Object *)NewObject( LABEL_GetClass(), NULL,
                         LABEL_DrawInfo, app->drawInfo,
                         //IA_Font, &helvetica15bu,
                         //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
                         LABEL_Justification, LABEL_CENTRE,
-                        LABEL_Text,(ULONG)"Values:",
+                        LABEL_Text,(ULONG)"Value from object instance update message:",
+                    TAG_END);
+ app->label2 = (Object *)NewObject( LABEL_GetClass(), NULL,
+                        LABEL_DrawInfo, app->drawInfo,
+                        //IA_Font, &helvetica15bu,
+                        //LABEL_SoftStyle, FSF_BOLD | FSF_ITALIC,
+                        LABEL_Justification, LABEL_LEFT,
+                        LABEL_Text,(ULONG)"Slider updates object Value attrib, then:",
                     TAG_END);
  // label which changing text are reconfigured buttons...
  app->labelValues = (Object *)NewObject( NULL, "button.gadget",
@@ -366,26 +402,18 @@ int main(int argc, char **argv)
                         GA_Text,(ULONG)"...",
                     TAG_END);
 
-    app->disablecheckbox = (Object *)NewObject( CHECKBOX_GetClass(), NULL,
-                    GA_DrawInfo,(ULONG) app->drawInfo,
-                    GA_Text,(ULONG)"Disable",
-                 GA_ID,GAD_DISABLECHECKBOX,
-                 ICA_TARGET, (ULONG)AppInstance,     // app model will receive notifications.
-                TAG_END);
-
-    if(!app->disablecheckbox) cleanexit("Can't create checkbox");
-
     app->bottombarlayout =
          (Object *)NewObject( LAYOUT_GetClass(), NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
-                LAYOUT_EvenSize, TRUE,
+                //LAYOUT_EvenSize, TRUE,
                 LAYOUT_HorizAlignment, LALIGN_RIGHT,
               //  CHILD_ScaleHeight,1, //%
                // CHILD_MaxHeight,app->fontHeight,
                // LAYOUT_SpaceInner, FALSE,
                 LAYOUT_AddImage, app->label1,
+                CHILD_WeightedWidth,4,
                 LAYOUT_AddChild, app->labelValues,
-                LAYOUT_AddChild, app->disablecheckbox,
+                CHILD_WeightedWidth,1,
               //  GA_Height,app->fontHeight,
                 TAG_DONE);
 
@@ -401,6 +429,7 @@ int main(int argc, char **argv)
             LAYOUT_HorizAlignment, LALIGN_RIGHT,
             LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
             LAYOUT_AddChild, app->horizontallayout,
+            LAYOUT_AddImage,app->label2,
             LAYOUT_AddChild, app->bottombarlayout,
                 CHILD_WeightedHeight,0,
             TAG_END);
@@ -417,7 +446,7 @@ int main(int argc, char **argv)
         WA_CustomScreen, app->lockedscreen,
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY /*| IDCMP_VANILLAKEY*/, // we want localized keys , not the raws.
         WA_Flags, WFLG_DRAGBAR | WFLG_DEPTHGADGET | WFLG_CLOSEGADGET | WFLG_SIZEGADGET | WFLG_ACTIVATE | WFLG_SMART_REFRESH,
-        WA_Title, "BaseName Gadget Test",
+        WA_Title, "BaseName Class Test",
         WINDOW_ParentGroup, app->mainlayout,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, GetDiskObject("PROGDIR:ReAction"),
@@ -429,6 +458,7 @@ int main(int argc, char **argv)
     /*  Open the window. */
     app->win = boopsi_OpenWindow(app->window_obj);
     if(!app->win) cleanexit("can't open window");
+
 
     {
         ULONG signal;
@@ -465,15 +495,16 @@ int main(int argc, char **argv)
                     case WMHI_GADGETUP:
                         switch (result & WMHI_GADGETMASK)
                         {
-                            case GAD_BUTTON_RECENTER:
-                                // does the button action.
-                                // change attributes of the gadget we created:
-                                // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
-                                SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL,
-                                    BASENAME_CenterX, 32768,
-                                    BASENAME_CenterY, 32768,
-                                    TAG_DONE);
-                            break;
+                            // case GAD_BUTTON_RECENTER:
+                            //     // does the button action.
+                            //     // change attributes of the gadget we created:
+                            //     // watch out it's SetGadgetAttrs and not SetAttrs() for gadgets...
+                            //     SetGadgetAttrs((struct Gadget *)app->kbdview,app->win,NULL,
+                            //         BASENAME_CenterX, 32768,
+                            //         BASENAME_CenterY, 32768,
+                            //         TAG_DONE);
+                            // break;
+
 
                             default:
                                 break;
@@ -520,14 +551,12 @@ void exitclose(void)
             else {
                 if(app->horizontallayout) DisposeObject(app->horizontallayout);
                 else {
-                    if(app->testbt) DisposeObject(app->testbt);
-                    if(app->kbdview) DisposeObject(app->kbdview);
+                    if(app->slider) DisposeObject(app->slider);
                 }
                 if(app->bottombarlayout) DisposeObject(app->bottombarlayout);
                 else {
                     if(app->label1) DisposeObject(app->label1);
                     if(app->labelValues) DisposeObject(app->labelValues);
-                    if(app->disablecheckbox) DisposeObject(app->disablecheckbox);
                 }
             }
         }
@@ -544,6 +573,7 @@ void exitclose(void)
 #else
     BaseNameStaticClose();
 #endif
+    if(ScrollerBase) CloseLibrary(ScrollerBase);
     if(CheckBoxBase) CloseLibrary(CheckBoxBase);
     if(LabelBase) CloseLibrary(LabelBase);
     if(ButtonBase) CloseLibrary(ButtonBase);
