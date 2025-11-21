@@ -89,6 +89,7 @@ void guiNotifier(int loglevel, const char *log);
 void updateUIToStates();
 void selectTemplate(int i);
 void generate();
+void openAboutReq();
 // usefull union for dispatchers. Each structs also starts with MethodID.
 typedef union MsgUnion
 {
@@ -107,6 +108,7 @@ typedef union MsgUnion
 /* Gadget action IDs, just to demonstrate some interactions
  */
 #define GAD_BUTTON_GENERATE 1
+#define GAD_BUTTON_ABOUT 2
 #define GAD_CB_SASC 3
 #define GAD_CB_MAKEFILE 4
 #define GAD_CB_CMAKELIST 5
@@ -131,6 +133,7 @@ struct App
     Object *mainvlayout;
         Object *horizontallayoutA;
          //   Object *titlelabel;
+            Object* btAbout;
         Object *horizontallayoutB;
         Object *layoutBList;
             // form constants
@@ -393,6 +396,15 @@ int main(int argc, char **argv)
                         LABEL_Text,(ULONG)"Boopsi Wizard 0.01 early beta",
                     TAG_END);
 
+        app->btAbout = NewObject( BUTTON_GetClass(),NULL,
+                                    GA_Text, "About...",
+                                    GA_ID,GAD_BUTTON_ABOUT,
+                                    GA_RelVerify, TRUE,
+                         //           GA_Disabled,TRUE,
+                        // BUTTON_BevelStyle,BVS_NONE,
+                        // BUTTON_Transparent, TRUE,
+                                TAG_END);
+
         app->horizontallayoutA =
              (Object *)NewObject( LAYOUT_GetClass(), NULL,
                     LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
@@ -400,6 +412,9 @@ int main(int argc, char **argv)
                     LAYOUT_HorizAlignment, LALIGN_CENTER,
                     LAYOUT_BevelStyle, BVS_GROUP,
                     LAYOUT_AddImage, label1,
+                     CHILD_WeightedWidth,1,
+                    LAYOUT_AddChild, app->btAbout,
+                     CHILD_WeightedWidth,0,
                     TAG_DONE);
     }
 
@@ -640,7 +655,7 @@ int main(int argc, char **argv)
         if (!app->mainvlayout) cleanexit("layout error 3");
 
         app->reportReq = NewObject(REQUESTER_GetClass(), NULL,
-			REQ_TitleText, "Project Generated",
+			// REQ_TitleText, "Project Generated",
 			REQ_Image,REQIMAGE_INFO,
 			REQ_BodyText,"....",
 			REQ_GadgetText,(ULONG)"_Ok", //
@@ -736,6 +751,9 @@ int main(int argc, char **argv)
                         } else if(gid == GAD_BUTTON_GENERATE)
                         {
                             generate();
+                        } else if(gid == GAD_BUTTON_ABOUT)
+                        {
+                            openAboutReq();
                         }
                         break;
                     }
@@ -946,6 +964,8 @@ void generate()
         }
         if(res ==0 &&  report.destinationDir && app->reportReq)
         {
+            SetAttrs(app->reportReq,REQ_TitleText,(ULONG)"Project Generated",TAG_END);
+
             // if ok, show a report requester
             char temp[512];
             snprintf(temp,511,"Project was generated in directory:\n%s\n"
@@ -969,5 +989,43 @@ void generate()
     return ;
 }
 
+void openAboutReq()
+{
+
+    SetAttrs(app->reportReq,REQ_TitleText,(ULONG)"About...",TAG_END);
+    // if ok, show a report requester
+ static const char *p=
+    "***Be warned***:\nThis wizard is not an official AmigaOS NDK project\nand will most likely stick to Beta stage forever.\n\n"
+    "What it is, is: an OpenSource effort of individual developpers, open to participation\n"
+    " at: https://github.com/krabobmkd/boopsiwizard\n"
+    " The fact is, a lot of aspect of Amiga OS development are difficult to set up,\n"
+    "  and setting a simple project for a library, class, gadget, datatype, commodity\n"
+    "  project, for a given C compiler, is cryptic, and takes days if not more.\n"
+    "  So you *may* gain some times with this.\n\n"
+    "The templates code proposed here will try to be the more compliant possible with\n"
+    " official Amiga guidelines, but may not be 100% compliant. You are loudly welcome\n"
+    " to make any suggestion on the code at:\n"
+    " https://github.com/krabobmkd/boopsiwizard/issues\n"
+    " Your resources for coding Amiga OS3 should be:\n"
+    " The Amiga Developer CD v2.1, forum https://developer.amigaos3.net/forum\n"
+    " https://developer.amigaos3.net/article/13-recommended-reading-amiga-developer\n\n"
+    "How does it work and How can I do a template ?\n"
+    " Templates are just a json file with a corresponding zip file in templates dir.\n"
+    " Each json describes what should be renamed. At generation, if your project name\n"
+    " is \"MyProject\",In target files, BaseName will be MyProject,BASENAME MYPROJECT\n"
+    " and basename myproject. File names and text contents are replaced.\n"
+    " Adress file names case-wise, we allow linux cross-compilation.\n\n"
+    "License of wizard itself is LGPL, which means you can fork it or embedd it in\n"
+    " commercial projects.It uses cJson and zlib. Templates should have their own rights\n"
+    " Some templates have code parts from official Amiga examples, some not.\n"
+    " If your compiler is GCC, from now on you should also install phxass, needed to\n"
+    " assemble the C startups."
+    "\n - krb, Nov.2025."
+    ;
+    SetAttrs(app->reportReq,REQ_BodyText,(ULONG)p,TAG_END);
+
+    OpenRequester(app->reportReq,app->win);
+
+}
 
 

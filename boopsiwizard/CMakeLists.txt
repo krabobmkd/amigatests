@@ -37,11 +37,11 @@ add_executable(BoopsiWizard
 		${ZLIBPATH}/contrib/minizip/ioapi.h
 		)
 
-
+# minizip
 target_compile_options(BoopsiWizard PRIVATE ${AMIGACOMPOPTS} )
 target_link_options(BoopsiWizard PRIVATE -s )
 target_include_directories(BoopsiWizard PUBLIC ${ZLIBPATH} ${MINIZIPLIBPATH} cjson )
-target_link_libraries(BoopsiWizard PUBLIC minizip minizip z cjson  )
+target_link_libraries(BoopsiWizard PUBLIC z cjson  )
 # IOAPI_NO_64 is for minizip/ioapi.c
 # sources that doesn't support -O2 are moved to MameXAmigaO0 lib
 #target_compile_options(BoopsiWizard PRIVATE
